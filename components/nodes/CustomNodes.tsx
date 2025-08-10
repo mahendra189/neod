@@ -1,4 +1,62 @@
+import React, { memo, useState } from "react";
+import { Handle, Position, NodeProps } from "reactflow";
+import { Icon } from "@iconify/react";
+import { Input, Select, SelectItem, Switch } from "@heroui/react";
+import clsx from "clsx";
+import { nodeStyles } from "./nodeStyles";
 import { LineChart, Line, XAxis, YAxis, Tooltip as ChartTooltip, Legend, ResponsiveContainer } from 'recharts';
+
+// Dataset Node - Lets user select dataset for training
+const DatasetNode = ({ data, type, selected, isConnectable }: NodeProps) => {
+  const dataset: string = data.dataset || 'mnist';
+  const setDataset = typeof data.onDatasetChange === 'function' ? data.onDatasetChange : () => {};
+  const handleCsv = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0] && typeof data.onCsvUpload === 'function') {
+      data.onCsvUpload(e.target.files[0]);
+    }
+  };
+  return (
+    <div
+      className={clsx(
+        'bg-gradient-to-r from-gray-700 to-gray-500 text-white rounded-lg shadow-lg border-2',
+        'min-w-[180px] max-w-[260px] transition-all duration-200 p-3',
+        selected ? 'border-white ring-2 ring-gray-300' : 'border-transparent',
+      )}
+    >
+      <Handle
+        className={nodeStyles.handle}
+        isConnectable={isConnectable}
+        position={Position.Right}
+        type="source"
+      />
+      <div className="flex items-center gap-2 mb-2">
+        <Icon className="w-5 h-5" icon="lucide:database" />
+        <div>
+          <div className="font-bold text-sm">Dataset</div>
+          <div className="text-xs opacity-80">Select for training</div>
+        </div>
+      </div>
+      <select
+        className="w-full text-black rounded p-1 text-xs"
+        value={dataset}
+        onChange={e => setDataset(e.target.value)}
+      >
+        <option value="mnist">MNIST (images)</option>
+        <option value="iris">Iris (tabular)</option>
+        <option value="csv">Upload CSV</option>
+      </select>
+      {/* For CSV, show upload button */}
+      {dataset === 'csv' && (
+        <input
+          type="file"
+          accept=".csv"
+          className="mt-2 w-full text-xs"
+          onChange={handleCsv}
+        />
+      )}
+    </div>
+  );
+};
 // Graph Node - Visualizes training metrics
 const GraphNode = ({ data, type, selected, isConnectable }: NodeProps) => {
   // data.metricsHistory: [{epoch, loss, acc}]
@@ -51,13 +109,7 @@ const GraphNode = ({ data, type, selected, isConnectable }: NodeProps) => {
     </div>
   );
 };
-import React, { memo, useState } from "react";
-import { Handle, Position, NodeProps } from "reactflow";
-import { Icon } from "@iconify/react";
-import { Input, Select, SelectItem, Switch } from "@heroui/react";
-import clsx from "clsx";
-
-import { nodeStyles } from "./nodeStyles";
+// (imports already at top of file)
 
 const BaseNode = ({ data, type, selected, isConnectable }: NodeProps) => {
   const isProcessing = data.isProcessing || false;
@@ -1391,6 +1443,7 @@ const MetricsNode = ({ data, type, selected, isConnectable }: NodeProps) => {
 
 // Update the nodeTypes object to use renamed layers and new text nodes
 export const nodeTypes = {
+  dataset: memo((props: NodeProps) => <DatasetNode {...props} />),
   graphNode: memo((props: NodeProps) => <GraphNode {...props} />),
   inputLayer: memo((props: NodeProps) => <InputLayer {...props} />),
   outputLayer: memo((props: NodeProps) => <OutputLayer {...props} />),

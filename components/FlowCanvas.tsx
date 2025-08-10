@@ -194,6 +194,38 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
 
   const [nodes, setNodes, onNodesChange] = useNodesState(getDefaultNodes());
   const [edges, setEdges, onEdgesChange] = useEdgesState(getDefaultEdges());
+  // Dataset node state by node id
+  const [datasetNodeState, setDatasetNodeState] = useState<Record<string, { dataset: string; csvFile?: File }>>({});
+
+  // Handler for dataset node changes
+  const handleDatasetChange = useCallback((nodeId: string, dataset: string) => {
+    setDatasetNodeState(prev => ({
+      ...prev,
+      [nodeId]: { ...prev[nodeId], dataset }
+    }));
+  }, []);
+
+  const handleCsvUpload = useCallback((nodeId: string, file: File) => {
+    setDatasetNodeState(prev => ({
+      ...prev,
+      [nodeId]: { ...prev[nodeId], csvFile: file, dataset: 'csv' }
+    }));
+  }, []);
+
+  // Find the dataset node connected to the input layer
+  const getSelectedDataset = () => {
+    const inputNode = nodes.find(n => n.type === 'inputLayer');
+    if (!inputNode) return { dataset: 'mnist' };
+    const datasetEdge = edges.find(e => e.target === inputNode.id && nodes.find(n => n.id === e.source && n.type === 'dataset'));
+    if (!datasetEdge) return { dataset: 'mnist' };
+    const datasetNodeId = datasetEdge.source;
+    const state = datasetNodeState[datasetNodeId];
+    if (!state) return { dataset: 'mnist' };
+    if (state.dataset === 'csv' && state.csvFile) {
+      return { dataset: state.csvFile };
+    }
+    return { dataset: state.dataset };
+  };
 
   // Update nodes and edges when template type changes
   useEffect(() => {
@@ -672,17 +704,11 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
       setLiveChartData((prev) => [...prev, { epoch, loss: logs.loss ?? 0, acc: logs.acc ?? logs.accuracy ?? 0 }]);
       setCurrentEpoch(epoch + 1);
       setLiveMetrics({ accuracy: logs.acc ?? logs.accuracy ?? 0, loss: logs.loss ?? 0 });
-
-      // Find all graphNodes connected to output/metrics node and update their metricsHistory
       setNodes((nds) => {
-        // Find output/metrics node ids
         const outputNodeIds = nds.filter(n => n.type === 'outputLayer' || n.type === 'metrics').map(n => n.id);
-        // For each graphNode, check if it is connected to an output/metrics node
         return nds.map(node => {
           if (node.type === 'graphNode') {
-            // Find incoming edges to this graphNode
             const incoming = edges.filter(e => e.target === node.id);
-            // If any incoming edge is from output/metrics node, update metricsHistory
             const isConnected = incoming.some(e => outputNodeIds.includes(e.source));
             if (isConnected) {
               const prevHistory = Array.isArray(node.data.metricsHistory) ? node.data.metricsHistory : [];
@@ -699,17 +725,6 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
         });
       });
     });
-      {/* Performance Analysis with live metrics */}
-      <div className="absolute bottom-4 left-4 z-20">
-        <PerformanceAnalysis
-          nodes={nodes}
-          edges={edges}
-          isTraining={isRunning}
-          currentEpoch={currentEpoch}
-          totalEpochs={totalEpochs}
-          liveMetrics={liveMetrics}
-        />
-      </div>
     tfjsRunner.on('nodeExecute', (nodeId: string, info: any) => {
       setHighlightedNode(nodeId);
       if (mode === 'inference') setTensorPreview(info.output);
@@ -721,11 +736,12 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
       setIsRunning(false);
       setLiveWarning(err.message);
     });
-    // For demo: always use MNIST for now
+    // Use selected dataset from dataset node
+    const { dataset } = getSelectedDataset();
     await tfjsRunner.run({
       mode,
       networkJson: { nodes, edges },
-      dataset: 'mnist',
+      dataset,
       epochs: totalEpochs,
       batchSize: 32,
       onEpochEnd: () => {},
@@ -755,40 +771,65 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
 
 
       {/* Main ReactFlow canvas */}
-      <ReactFlow
-        fitView
-        connectionMode={ConnectionMode.Loose}
-        defaultEdgeOptions={{
-          type: "smooth",
-          animated: true,
-        }}
-        defaultViewport={{ x: 0, y: 0, zoom: 1 }}
-        edges={edges}
-        fitViewOptions={{ padding: 0.2 }}
-        nodeTypes={nodeTypes}
-        nodes={nodes.map((node) => ({
-          ...node,
-          style: {
-            ...node.style,
-            ...(selectedNodeId === node.id || highlightedNode === node.id
-              ? {
-                  boxShadow: "0 0 0 3px #f59e42",
-                  border: "2px solid #f59e42",
-                }
-              : {}),
+      {/* Custom nodeTypes to inject dataset node state/handlers, memoized to avoid React Flow error */}
+      {/** Memoize customNodeTypes to avoid recreating on every render */}
+      {(() => {
+        // Memoize customNodeTypes
+        // eslint-disable-next-line react-hooks/rules-of-hooks
+        const customNodeTypes = React.useMemo(() => ({
+          ...nodeTypes,
+          dataset: (props: any) => {
+            const DatasetNode = nodeTypes.dataset.type || nodeTypes.dataset;
+            return (
+              <DatasetNode
+                {...props}
+                data={{
+                  ...props.data,
+                  dataset: datasetNodeState[props.id]?.dataset || 'mnist',
+                  onDatasetChange: (ds: string) => handleDatasetChange(props.id, ds),
+                  onCsvUpload: (file: File) => handleCsvUpload(props.id, file),
+                }}
+              />
+            );
           },
-        }))}
-        selectNodesOnDrag={false}
-        onConnect={onConnect}
-        onDragOver={onDragOver}
-        onDrop={onDrop}
-        onEdgesChange={onEdgesChange}
-        onNodeClick={(_, node) => onNodeSelect(node)}
-        onNodesChange={onNodesChange}
-      >
-        <Controls />
-        <Background color="#aaa" gap={20} />
-      </ReactFlow>
+        }), [nodeTypes, datasetNodeState, handleDatasetChange, handleCsvUpload]);
+        return (
+          <ReactFlow
+            fitView
+            connectionMode={ConnectionMode.Loose}
+            defaultEdgeOptions={{
+              type: "smooth",
+              animated: true,
+            }}
+            defaultViewport={{ x: 0, y: 0, zoom: 1 }}
+            edges={edges}
+            fitViewOptions={{ padding: 0.2 }}
+            nodeTypes={customNodeTypes}
+            nodes={nodes.map((node) => ({
+              ...node,
+              style: {
+                ...node.style,
+                ...(selectedNodeId === node.id || highlightedNode === node.id
+                  ? {
+                      boxShadow: "0 0 0 3px #f59e42",
+                      border: "2px solid #f59e42",
+                    }
+                  : {}),
+              },
+            }))}
+            selectNodesOnDrag={false}
+            onConnect={onConnect}
+            onDragOver={onDragOver}
+            onDrop={onDrop}
+            onEdgesChange={onEdgesChange}
+            onNodeClick={(_, node) => onNodeSelect(node)}
+            onNodesChange={onNodesChange}
+          >
+            <Controls />
+            <Background color="#aaa" gap={20} />
+          </ReactFlow>
+        );
+      })()}
 
       {/* Collapsible Toolbar - Top Right */}
       <div className="absolute top-4 right-4 z-10">

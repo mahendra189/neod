@@ -9,6 +9,14 @@ const nodeTypesByCategory = [
     category: "Input/Output",
     nodes: [
       {
+        type: "dataset",
+        label: "Dataset",
+        icon: "lucide:database",
+        details: "Select dataset for training",
+        keywords: ["dataset", "data", "csv", "mnist", "iris"],
+        popularity: 99,
+      },
+      {
         type: "inputLayer",
         label: "Input Layer",
         icon: "lucide:box",
