@@ -753,32 +753,6 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
         <Button color="danger" disabled={!isRunning} onClick={handleStop}>Stop</Button>
       </div>
 
-      {/* Live right panel: chart + tensor preview */}
-      {(isRunning || liveChartData.length > 0 || tensorPreview) && (
-        <div className="absolute top-0 right-0 h-full w-[400px] bg-white dark:bg-black/80 border-l border-default-200 z-30 flex flex-col">
-          <div className="p-4 border-b border-default-200">
-            <h3 className="font-semibold text-lg mb-2">Live Training</h3>
-            {liveWarning && <div className="text-warning mb-2">{liveWarning}</div>}
-            <ResponsiveContainer width="100%" height={180}>
-              <LineChart data={liveChartData} margin={{ left: 10, right: 10, top: 10, bottom: 10 }}>
-                <XAxis dataKey="epoch" />
-                <YAxis />
-                <ChartTooltip />
-                <Legend />
-                <Line type="monotone" dataKey="loss" stroke="#f59e42" name="Loss" />
-                <Line type="monotone" dataKey="acc" stroke="#3b82f6" name="Accuracy" />
-              </LineChart>
-            </ResponsiveContainer>
-            <div className="text-xs mt-2">Epoch: {currentEpoch} / {totalEpochs}</div>
-          </div>
-          {inferenceMode && tensorPreview && (
-            <div className="p-4 overflow-auto flex-1">
-              <h4 className="font-semibold mb-2">Tensor Preview</h4>
-              <pre className="bg-default-100 rounded p-2 text-xs max-h-60 overflow-auto">{JSON.stringify(tensorPreview, null, 2)}</pre>
-            </div>
-          )}
-        </div>
-      )}
 
       {/* Main ReactFlow canvas */}
       <ReactFlow
