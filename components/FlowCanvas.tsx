@@ -920,7 +920,20 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
               animated: true,
             }}
             defaultViewport={{ x: 0, y: 0, zoom: 1 }}
-            edges={edges}
+            edges={edges.map(edge => {
+              // If the edge is from a database_config node and has a sourceHandle, add a label
+              const sourceNode = nodes.find(n => n.id === edge.source);
+              if (sourceNode && sourceNode.type === 'database_config' && edge.sourceHandle) {
+                return {
+                  ...edge,
+                  label: edge.sourceHandle === 'x' ? 'X' : edge.sourceHandle === 'y' ? 'y' : undefined,
+                  labelStyle: { fill: '#059669', fontWeight: 700, fontSize: 13, background: '#fff' },
+                  labelBgStyle: { fill: '#fff', fillOpacity: 0.8 },
+                  labelShowBg: true,
+                };
+              }
+              return edge;
+            })}
             fitViewOptions={{ padding: 0.2 }}
             nodeTypes={customNodeTypes}
             nodes={nodes.map((node) => ({

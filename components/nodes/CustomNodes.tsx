@@ -298,6 +298,8 @@ const BaseNode = ({ data, type, selected, isConnectable }: NodeProps) => {
 };
 
 const InputLayer = ({ data, type, selected, isConnectable }: NodeProps) => {
+  // Show warning if inputFrom is not 'x' (from DatabaseConfigNode)
+  const showInputWarning = data.inputFrom && data.inputFrom !== 'x';
   const handleCountChange = (delta: number) => {
     data.onChange?.(data.count + delta);
   };
@@ -311,6 +313,11 @@ const InputLayer = ({ data, type, selected, isConnectable }: NodeProps) => {
         type === "inputLayer" ? "bg-blue-500" : "bg-blue-400",
       )}
     >
+      {showInputWarning && (
+        <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-yellow-200 text-yellow-900 text-xs px-2 py-1 rounded shadow">
+          Warning: Input should be connected to X (features)
+        </div>
+      )}
       <Handle
         className={nodeStyles.handle}
         isConnectable={isConnectable}
@@ -390,6 +397,8 @@ const HiddenLayer = ({ data, type, selected, isConnectable }: NodeProps) => {
 };
 
 const OutputLayer = ({ data, type, selected, isConnectable }: NodeProps) => {
+  // Show warning if inputFrom is not 'y' (from DatabaseConfigNode)
+  const showOutputWarning = data.inputFrom && data.inputFrom !== 'y';
   const handleCountChange = (delta: number) => {
     data.onChange?.(data.count + delta);
   };
@@ -403,7 +412,14 @@ const OutputLayer = ({ data, type, selected, isConnectable }: NodeProps) => {
         "bg-green-500",
       )}
     >
+      {showOutputWarning && (
+        <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-yellow-200 text-yellow-900 text-xs px-2 py-1 rounded shadow">
+          Warning: Output should be connected to y (target)
+        </div>
+      )}
+      {/* Accept both X and y connections by specifying id for the target handle */}
       <Handle
+        id="output-input"
         className={nodeStyles.handle}
         isConnectable={isConnectable}
         position={Position.Left}
@@ -1339,7 +1355,7 @@ const TrainingConfigNode = ({
   return (
     <div
       className={clsx(
-        "bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-lg shadow-lg border-2",
+        "bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-lg shadow-lg border-2 pl-20",
         "min-w-[240px] transition-all duration-200",
         selected
           ? "border-white ring-2 ring-emerald-300"
@@ -1347,32 +1363,52 @@ const TrainingConfigNode = ({
         isExpanded ? "min-h-[350px]" : "h-[120px]",
       )}
     >
-      {/* Multiple input handles for optimizer, loss, scheduler */}
+      {/* Input handles for optimizer, loss, scheduler, y (target) */}
+      {/* Input handles for optimizer, loss, scheduler, y (target) with improved spacing and right-aligned labels */}
       <Handle
         className="w-3 h-3 bg-orange-400"
         id="optimizer"
         isConnectable={isConnectable}
         position={Position.Left}
-        style={{ top: "25%" }}
+        style={{ top: "18%" }}
         type="target"
       />
+      <div className="absolute left-1" style={{ top: '15%' }}>
+        <span className="bg-orange-400 text-xs px-2 rounded text-white whitespace-nowrap shadow">Optimizer</span>
+      </div>
       <Handle
         className="w-3 h-3 bg-red-500"
         id="loss"
         isConnectable={isConnectable}
         position={Position.Left}
-        style={{ top: "50%" }}
+        style={{ top: "33%" }}
         type="target"
       />
+      <div className="absolute left-1" style={{ top: '30%' }}>
+        <span className="bg-red-500 text-xs px-2 rounded text-white whitespace-nowrap shadow">Loss</span>
+      </div>
       <Handle
         className="w-3 h-3 bg-yellow-500"
         id="scheduler"
         isConnectable={isConnectable}
         position={Position.Left}
-        style={{ top: "75%" }}
+        style={{ top: "48%" }}
         type="target"
       />
-
+      <div className="absolute left-1" style={{ top: '45%' }}>
+        <span className="bg-yellow-500 text-xs px-2 rounded text-black whitespace-nowrap shadow">Scheduler</span>
+      </div>
+      <Handle
+        className="w-3 h-3 bg-pink-500"
+        id="y"
+        isConnectable={isConnectable}
+        position={Position.Left}
+        style={{ top: "63%" }}
+        type="target"
+      />
+      <div className="absolute left-1" style={{ top: '60%' }}>
+        <span className="bg-pink-500 text-xs px-2 rounded text-white whitespace-nowrap shadow">y (target)</span>
+      </div>
       {/* Main network input from the last layer */}
       <Handle
         className="w-3 h-3 bg-blue-500"
@@ -1381,6 +1417,9 @@ const TrainingConfigNode = ({
         position={Position.Top}
         type="target"
       />
+      <div className="absolute left-1/2 -translate-x-1/2" style={{ top: '-18px' }}>
+        <span className="bg-blue-500 text-xs px-2 rounded text-white whitespace-nowrap shadow">Network</span>
+      </div>
 
       <div
         className="p-4 cursor-pointer"
