@@ -1,3 +1,133 @@
+// Database Config Node - Lets user configure dataset preprocessing
+const DatabaseConfigNode = ({ data, type, selected, isConnectable }: NodeProps) => {
+  // X/y column selection, split, shuffle, stratify, preview
+  const xColumns = data.xColumns || [];
+  const yColumns = data.yColumns || [];
+  const selectedX = data.selectedX || [];
+  const selectedY = data.selectedY || [];
+  const trainSplit = data.trainSplit ?? 0.8;
+  const shuffle = data.shuffle ?? true;
+  const stratify = data.stratify ?? false;
+  const onChange = data.onChange || (() => {});
+  // For preview, show first 3 rows if available
+  const preview = data.preview || [];
+  return (
+    <div
+      className={clsx(
+        'bg-gradient-to-r from-emerald-700 to-emerald-500 text-white rounded-lg shadow-lg border-2',
+        'min-w-[220px] max-w-[340px] transition-all duration-200 p-3',
+        selected ? 'border-white ring-2 ring-emerald-300' : 'border-transparent',
+      )}
+    >
+      <Handle
+        className={nodeStyles.handle}
+        isConnectable={isConnectable}
+        position={Position.Left}
+        type="target"
+      />
+      <div className="flex items-center gap-2 mb-2">
+        <Icon className="w-5 h-5" icon="lucide:settings" />
+        <div>
+          <div className="font-bold text-sm">Database Config</div>
+          <div className="text-xs opacity-80">Preprocess & Split Dataset</div>
+        </div>
+      </div>
+      <div className="mb-2">
+        <div className="text-xs font-semibold mb-1">Select X (features):</div>
+        <Select
+          multiple
+          className="w-full text-black text-xs"
+          value={selectedX}
+          onChange={val => onChange({ selectedX: val })}
+        >
+          {xColumns.map((col: string) => (
+            <SelectItem key={col}>{col}</SelectItem>
+          ))}
+        </Select>
+      </div>
+      <div className="mb-2">
+        <div className="text-xs font-semibold mb-1">Select y (target):</div>
+        <Select
+          className="w-full text-black text-xs"
+          value={selectedY}
+          onChange={val => onChange({ selectedY: [val] })}
+        >
+          {yColumns.map((col: string) => (
+            <SelectItem key={col}>{col}</SelectItem>
+          ))}
+        </Select>
+      </div>
+      <div className="flex gap-2 mb-2">
+        <div className="flex-1">
+          <div className="text-xs font-semibold mb-1">Train Split</div>
+          <Input
+            type="number"
+            min={0.5}
+            max={0.99}
+            step={0.01}
+            value={trainSplit}
+            onChange={e => onChange({ trainSplit: parseFloat(e.target.value) })}
+            className="w-full text-black text-xs"
+          />
+        </div>
+        <div className="flex flex-col justify-end">
+          <label className="text-xs flex items-center gap-1">
+            <Switch checked={shuffle} onChange={val => onChange({ shuffle: val })} /> Shuffle
+          </label>
+          <label className="text-xs flex items-center gap-1">
+            <Switch checked={stratify} onChange={val => onChange({ stratify: val })} /> Stratify
+          </label>
+        </div>
+      </div>
+      {preview.length > 0 && (
+        <div className="bg-white/80 text-black rounded p-1 text-xs mt-2 overflow-x-auto">
+          <div className="font-semibold mb-1">Preview</div>
+          <table className="w-full text-xs">
+            <thead>
+              <tr>
+                {Object.keys(preview[0]).map((col) => (
+                  <th key={col} className="px-1 text-left">{col}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {preview.slice(0, 3).map((row: any, i: number) => (
+                <tr key={i}>
+                  {Object.values(row).map((val: any, j: number) => (
+                    <td key={j} className="px-1">{val}</td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {/* Output handles for X and y */}
+      <Handle
+        id="x"
+        className={nodeStyles.handle}
+        isConnectable={isConnectable}
+        position={Position.Right}
+        type="source"
+        style={{ top: '40%' }}
+      />
+      <div className="absolute right-2" style={{ top: '38%' }}>
+        <span className="bg-emerald-900 text-xs px-1 rounded">X</span>
+      </div>
+      <Handle
+        id="y"
+        className={nodeStyles.handle}
+        isConnectable={isConnectable}
+        position={Position.Right}
+        type="source"
+        style={{ top: '60%' }}
+      />
+      <div className="absolute right-2" style={{ top: '58%' }}>
+        <span className="bg-emerald-900 text-xs px-1 rounded">y</span>
+      </div>
+    </div>
+  );
+};
 import React, { memo, useState } from "react";
 import { Handle, Position, NodeProps } from "reactflow";
 import { Icon } from "@iconify/react";
@@ -1443,6 +1573,7 @@ const MetricsNode = ({ data, type, selected, isConnectable }: NodeProps) => {
 
 // Update the nodeTypes object to use renamed layers and new text nodes
 export const nodeTypes = {
+  database_config: memo((props: NodeProps) => <DatabaseConfigNode {...props} />),
   dataset: memo((props: NodeProps) => <DatasetNode {...props} />),
   graphNode: memo((props: NodeProps) => <GraphNode {...props} />),
   inputLayer: memo((props: NodeProps) => <InputLayer {...props} />),

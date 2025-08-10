@@ -17,6 +17,14 @@ const nodeTypesByCategory = [
         popularity: 99,
       },
       {
+        type: "database_config",
+        label: "Database Config",
+        icon: "lucide:settings",
+        details: "Preprocess & split dataset (X/y, split, shuffle, stratify, preview)",
+        keywords: ["database", "config", "preprocess", "split", "x", "y", "shuffle", "stratify", "preview"],
+        popularity: 98,
+      },
+      {
         type: "inputLayer",
         label: "Input Layer",
         icon: "lucide:box",

@@ -7,8 +7,6 @@ import ReactFlow, {
   useEdgesState,
   addEdge,
   Connection,
-  Edge,
-  Node,
   useReactFlow,
   ConnectionMode,
 } from "reactflow";
@@ -17,10 +15,13 @@ import { Card, CardBody, CardFooter, RadioGroup, Radio } from "@heroui/react";
 import { Button } from "@heroui/button";
 
 import { nodeTypes } from "./nodes/CustomNodes";
+import Papa from 'papaparse';
 import { NetworkCodeGenerator } from "./CodeGenerator";
 import { getLayoutedElements } from "./utils/layoutUtils";
 import { getTemplateByType } from "./templates/templateDefinitions";
 import HelpSystem from "./HelpSystem";
+import ModelValidator from "./ModelValidator";
+import type { Node, Edge } from 'reactflow';
 import FloatingToolbar from "./FloatingToolbar";
 import SaveProjectModal from "./SaveProjectModal";
 import { useToast } from "./ToastProvider";
@@ -195,7 +196,7 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
   const [nodes, setNodes, onNodesChange] = useNodesState(getDefaultNodes());
   const [edges, setEdges, onEdgesChange] = useEdgesState(getDefaultEdges());
   // Dataset node state by node id
-  const [datasetNodeState, setDatasetNodeState] = useState<Record<string, { dataset: string; csvFile?: File }>>({});
+  const [datasetNodeState, setDatasetNodeState] = useState<Record<string, { dataset: string; csvFile?: File; columns?: string[] }>>({});
 
   // Handler for dataset node changes
   const handleDatasetChange = useCallback((nodeId: string, dataset: string) => {
@@ -206,10 +207,18 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
   }, []);
 
   const handleCsvUpload = useCallback((nodeId: string, file: File) => {
-    setDatasetNodeState(prev => ({
-      ...prev,
-      [nodeId]: { ...prev[nodeId], csvFile: file, dataset: 'csv' }
-    }));
+    // Parse CSV header for columns
+    Papa.parse(file, {
+      header: true,
+      preview: 1,
+      complete: (results: Papa.ParseResult<any>) => {
+        const columns = results.meta.fields || [];
+        setDatasetNodeState(prev => ({
+          ...prev,
+          [nodeId]: { ...prev[nodeId], csvFile: file, dataset: 'csv', columns },
+        }));
+      },
+    });
   }, []);
 
   // Find the dataset node connected to the input layer
@@ -224,7 +233,7 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
     if (state.dataset === 'csv' && state.csvFile) {
       return { dataset: state.csvFile };
     }
-    return { dataset: state.dataset };
+    return { dataset: String(state.dataset) };
   };
 
   // Update nodes and edges when template type changes
@@ -273,6 +282,7 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
   );
   const [generatedCode, setGeneratedCode] = useState("");
   const [error, setError] = useState("");
+  const [validationIssues, setValidationIssues] = useState<any[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [showSaveModal, setShowSaveModal] = useState(false);
@@ -322,9 +332,29 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
     };
   }, [showPanel, closePanel]);
 
+  // Custom onConnect to support X/y handle propagation from DatabaseConfigNode
   const onConnect = useCallback(
-    (params: Connection | Edge) => setEdges((eds) => addEdge(params, eds)),
-    [setEdges],
+    (params: Connection | Edge) => {
+      setEdges((eds) => addEdge(params, eds));
+      // If the source is a DatabaseConfigNode and has a handle id ("x" or "y"), propagate info to downstream node
+      const sourceNode = nodes.find(n => n.id === params.source);
+      if (sourceNode && sourceNode.type === "database_config" && params.sourceHandle) {
+        setNodes(nds => nds.map(node => {
+          if (node.id === params.target) {
+            // Attach info about which handle (X or y) is connected
+            return {
+              ...node,
+              data: {
+                ...node.data,
+                inputFrom: params.sourceHandle // 'x' or 'y'
+              }
+            };
+          }
+          return node;
+        }));
+      }
+    },
+    [setEdges, nodes, setNodes],
   );
 
   // Auto layout function
@@ -568,12 +598,64 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
   // Handle highlighting a node (from validator)
   const handleIssueSelect = useCallback((nodeId: string) => {
     setSelectedNodeId(nodeId);
-
-    // Clear highlight after 3 seconds
     setTimeout(() => {
       setSelectedNodeId(null);
     }, 3000);
   }, []);
+
+  // Inline model analysis logic for instant feedback
+  useEffect(() => {
+    // --- ModelValidator logic (sync, simplified) ---
+    const inputNodes = nodes.filter((n: Node) => n.type === "inputLayer" || n.type === "textInput");
+    const outputNodes = nodes.filter((n: Node) => n.type === "outputLayer");
+    const denseNodes = nodes.filter((n: Node) => n.type === "dense");
+    const dropoutNodes = nodes.filter((n: Node) => n.type === "dropout");
+    const convNodes = nodes.filter((n: Node) => n.type === "conv2d");
+    const issues: any[] = [];
+    // Validation checks
+    if (inputNodes.length === 0) {
+      issues.push({
+        id: "no-input",
+        type: "error",
+        title: "No Input Layer",
+        description: "Your model needs at least one input layer to receive data.",
+      });
+    }
+    if (outputNodes.length === 0) {
+      issues.push({
+        id: "no-output",
+        type: "error",
+        title: "No Output Layer",
+        description: "Your model needs an output layer to produce predictions.",
+      });
+    }
+    // Disconnected nodes
+    const connectedNodeIds = new Set();
+    edges.forEach((edge: Edge) => {
+      connectedNodeIds.add(edge.source);
+      connectedNodeIds.add(edge.target);
+    });
+    const disconnectedNodes = nodes.filter((node: Node) => !connectedNodeIds.has(node.id) && node.type !== "textInput");
+    if (disconnectedNodes.length > 0) {
+      issues.push({
+        id: "disconnected-nodes",
+        type: "error",
+        title: `Disconnected Nodes`,
+        description: "Some nodes are not connected to the main network flow.",
+      });
+    }
+    // More checks can be added here...
+    setValidationIssues(issues);
+    // Show toast for errors/warnings
+    if (issues.length > 0) {
+      const error = issues.find(i => i.type === 'error');
+      if (error) showError('Model Error', error.title + ': ' + error.description);
+      else {
+        const warning = issues.find(i => i.type === 'warning');
+        if (warning) showError('Model Warning', warning.title + ': ' + warning.description);
+      }
+    }
+  }, [nodes, edges, showError]);
 
   // Handle saving a project
   const handleSaveProject = useCallback(() => {
@@ -741,7 +823,7 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
     await tfjsRunner.run({
       mode,
       networkJson: { nodes, edges },
-      dataset,
+  dataset: dataset as import("../runner/tfjsRunner").DatasetType | File,
       epochs: totalEpochs,
       batchSize: 32,
       onEpochEnd: () => {},
@@ -770,6 +852,11 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
       </div>
 
 
+      {/* Model Validator Button (top right) */}
+      <div className="absolute top-4 right-56 z-20">
+  <ModelValidator nodes={nodes} edges={edges} onIssueSelect={handleIssueSelect} />
+      </div>
+
       {/* Main ReactFlow canvas */}
       {/* Custom nodeTypes to inject dataset node state/handlers, memoized to avoid React Flow error */}
       {/** Memoize customNodeTypes to avoid recreating on every render */}
@@ -788,6 +875,37 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
                   dataset: datasetNodeState[props.id]?.dataset || 'mnist',
                   onDatasetChange: (ds: string) => handleDatasetChange(props.id, ds),
                   onCsvUpload: (file: File) => handleCsvUpload(props.id, file),
+                }}
+              />
+            );
+          },
+          database_config: (props: any) => {
+            // Find incoming edge from dataset node
+            const incoming = edges.find(e => e.target === props.id && nodes.find(n => n.id === e.source && n.type === 'dataset'));
+            let xColumns: string[] = [];
+            let yColumns: string[] = [];
+            if (incoming) {
+              const datasetNodeId = incoming.source;
+              const dsState = datasetNodeState[datasetNodeId];
+              if (dsState && dsState.dataset === 'csv' && Array.isArray(dsState.columns)) {
+                xColumns = dsState.columns;
+                yColumns = dsState.columns;
+              } else if (dsState && dsState.dataset === 'mnist') {
+                xColumns = Array.from({length: 784}, (_, i) => `pixel${i}`);
+                yColumns = ['digit'];
+              } else if (dsState && dsState.dataset === 'iris') {
+                xColumns = ['sepalLength', 'sepalWidth', 'petalLength', 'petalWidth'];
+                yColumns = ['species'];
+              }
+            }
+            const DatabaseConfigNode = nodeTypes.database_config.type || nodeTypes.database_config;
+            return (
+              <DatabaseConfigNode
+                {...props}
+                data={{
+                  ...props.data,
+                  xColumns,
+                  yColumns,
                 }}
               />
             );
