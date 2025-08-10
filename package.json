@@ -32,11 +32,14 @@
     "framer-motion": "11.18.2",
     "intl-messageformat": "10.7.16",
     "lucide-react": "^0.536.0",
+    "ml-dataset-iris": "^1.2.1",
+    "mnist": "^1.1.0",
     "next": "15.3.1",
     "next-themes": "0.4.6",
     "react": "18.3.1",
     "react-dom": "18.3.1",
-    "reactflow": "^11.11.4"
+    "reactflow": "^11.11.4",
+    "recharts": "^3.1.2"
   },
   "devDependencies": {
     "@eslint/compat": "1.2.8",

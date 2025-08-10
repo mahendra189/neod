@@ -69,6 +69,7 @@ interface PerformanceAnalysisProps {
   isTraining?: boolean;
   currentEpoch?: number;
   totalEpochs?: number;
+  liveMetrics?: Partial<ModelMetrics> | null;
 }
 
 const PerformanceAnalysis: React.FC<PerformanceAnalysisProps> = ({
@@ -77,6 +78,7 @@ const PerformanceAnalysis: React.FC<PerformanceAnalysisProps> = ({
   isTraining = false,
   currentEpoch = 0,
   totalEpochs = 100,
+  liveMetrics = null,
 }) => {
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
   const [metrics, setMetrics] = useState<ModelMetrics | null>(null);
@@ -85,9 +87,12 @@ const PerformanceAnalysis: React.FC<PerformanceAnalysisProps> = ({
   const [selectedTab, setSelectedTab] = useState("overview");
   const [timeRange, setTimeRange] = useState("1h");
 
-  // Simulate real-time metrics updates during training
+  // Use live metrics if provided
   useEffect(() => {
-    if (isTraining) {
+    if (liveMetrics) {
+      setMetrics((prev) => ({ ...prev, ...liveMetrics } as ModelMetrics));
+    } else if (isTraining) {
+      // Simulate real-time metrics updates during training
       const interval = setInterval(() => {
         setMetrics((prev) =>
           prev
@@ -104,10 +109,9 @@ const PerformanceAnalysis: React.FC<PerformanceAnalysisProps> = ({
             : null,
         );
       }, 2000);
-
       return () => clearInterval(interval);
     }
-  }, [isTraining]);
+  }, [isTraining, liveMetrics]);
 
   const analyzeModel = async () => {
     setIsAnalyzing(true);

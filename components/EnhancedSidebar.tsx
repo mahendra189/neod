@@ -40,6 +40,14 @@ const nodeTypesByCategory = [
         keywords: ["text", "output", "result", "words"],
         popularity: 70,
       },
+      {
+        type: "graphNode",
+        label: "Graph",
+        icon: "lucide:line-chart",
+        details: "Live Training Metrics Graph",
+        keywords: ["graph", "chart", "metrics", "loss", "accuracy", "visualize"],
+        popularity: 90,
+      },
     ],
   },
   {

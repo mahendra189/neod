@@ -24,6 +24,9 @@ import HelpSystem from "./HelpSystem";
 import FloatingToolbar from "./FloatingToolbar";
 import SaveProjectModal from "./SaveProjectModal";
 import { useToast } from "./ToastProvider";
+import TfjsRunner from "../runner/tfjsRunner";
+import { LineChart, Line, XAxis, YAxis, Tooltip as ChartTooltip, Legend, ResponsiveContainer } from 'recharts';
+import PerformanceAnalysis from "./PerformanceAnalysis";
 
 import ProjectStorage, { SavedProject } from "@/utils/projectStorage";
 import "reactflow/dist/style.css";
@@ -69,11 +72,11 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
       id: "inputlayer-1",
       type: "inputLayer",
       data: {
-        label: "Input Layer (100)",
+        label: "Input Layer (784)",
         icon: "lucide:square-dot-minus",
-        details: "Network input layer - text vectorization",
-        count: 1,
-        params: { shape: [100] },
+        details: "MNIST input layer - 28x28 flattened",
+        count: 784,
+        params: { shape: [784] },
         onChange: (newCount: number) => {
           setNodes((nds) =>
             nds.map((node) =>
@@ -125,11 +128,11 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
       id: "output-1",
       type: "outputLayer",
       data: {
-        label: "Text Output",
-        count: 1,
+        label: "Output (10 classes)",
+        count: 10,
         icon: "lucide:arrow-right",
-        details: "Final output",
-        params: { activation: "sigmoid", units: 1 },
+        details: "MNIST output - 10 classes",
+        params: { activation: "softmax", units: 10 },
         onChange: (newCount: number) => {
           setNodes((nds) =>
             nds.map((node) =>
@@ -144,6 +147,17 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
         },
       },
       position: { x: 800, y: 200 },
+    },
+    {
+      id: "graph-1",
+      type: "graphNode",
+      data: {
+        label: "Training Graph",
+        icon: "lucide:line-chart",
+        details: "Live Loss & Accuracy",
+        metricsHistory: [],
+      },
+      position: { x: 1050, y: 200 },
     },
   ];
 
@@ -167,6 +181,13 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
       source: "dense-1",
       target: "output-1",
       animated: true,
+      type: "smooth",
+    },
+    {
+      id: "e-output-graph",
+      source: "output-1",
+      target: "graph-1",
+      animated: false,
       type: "smooth",
     },
   ];
@@ -203,6 +224,18 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
     }
   }, [projectId, setNodes, setEdges]);
   const [showPanel, setShowPanel] = useState(false);
+  // Real-time execution state
+  const [runner, setRunner] = useState<TfjsRunner | null>(null);
+  const [isRunning, setIsRunning] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const [liveChartData, setLiveChartData] = useState<{epoch: number, loss: number, acc: number}[]>([]);
+  const [liveMetrics, setLiveMetrics] = useState<any>(null);
+  const [currentEpoch, setCurrentEpoch] = useState(0);
+  const [totalEpochs, setTotalEpochs] = useState(10);
+  const [highlightedNode, setHighlightedNode] = useState<string | null>(null);
+  const [tensorPreview, setTensorPreview] = useState<any>(null);
+  const [inferenceMode, setInferenceMode] = useState(false);
+  const [liveWarning, setLiveWarning] = useState<string | null>(null);
   const [framework, setFramework] = useState<"tensorflow" | "pytorch">(
     "tensorflow",
   );
@@ -624,11 +657,130 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
     }
   };
 
+  // --- Real-time runner handlers ---
+  const handleRun = async (mode: 'train' | 'inference') => {
+    if (isRunning) return;
+    setIsRunning(true);
+    setInferenceMode(mode === 'inference');
+    setLiveChartData([]);
+    setTensorPreview(null);
+    setCurrentEpoch(0);
+    setLiveWarning(null);
+    const tfjsRunner = new TfjsRunner();
+    setRunner(tfjsRunner);
+    tfjsRunner.on('epochEnd', (epoch: number, logs: any) => {
+      setLiveChartData((prev) => [...prev, { epoch, loss: logs.loss ?? 0, acc: logs.acc ?? logs.accuracy ?? 0 }]);
+      setCurrentEpoch(epoch + 1);
+      setLiveMetrics({ accuracy: logs.acc ?? logs.accuracy ?? 0, loss: logs.loss ?? 0 });
+
+      // Find all graphNodes connected to output/metrics node and update their metricsHistory
+      setNodes((nds) => {
+        // Find output/metrics node ids
+        const outputNodeIds = nds.filter(n => n.type === 'outputLayer' || n.type === 'metrics').map(n => n.id);
+        // For each graphNode, check if it is connected to an output/metrics node
+        return nds.map(node => {
+          if (node.type === 'graphNode') {
+            // Find incoming edges to this graphNode
+            const incoming = edges.filter(e => e.target === node.id);
+            // If any incoming edge is from output/metrics node, update metricsHistory
+            const isConnected = incoming.some(e => outputNodeIds.includes(e.source));
+            if (isConnected) {
+              const prevHistory = Array.isArray(node.data.metricsHistory) ? node.data.metricsHistory : [];
+              return {
+                ...node,
+                data: {
+                  ...node.data,
+                  metricsHistory: [...prevHistory, { epoch, loss: logs.loss ?? 0, acc: logs.acc ?? logs.accuracy ?? 0 }],
+                },
+              };
+            }
+          }
+          return node;
+        });
+      });
+    });
+      {/* Performance Analysis with live metrics */}
+      <div className="absolute bottom-4 left-4 z-20">
+        <PerformanceAnalysis
+          nodes={nodes}
+          edges={edges}
+          isTraining={isRunning}
+          currentEpoch={currentEpoch}
+          totalEpochs={totalEpochs}
+          liveMetrics={liveMetrics}
+        />
+      </div>
+    tfjsRunner.on('nodeExecute', (nodeId: string, info: any) => {
+      setHighlightedNode(nodeId);
+      if (mode === 'inference') setTensorPreview(info.output);
+    });
+    tfjsRunner.on('warning', (msg: string) => setLiveWarning(msg));
+    tfjsRunner.on('inferenceEnd', () => setIsRunning(false));
+    tfjsRunner.on('complete', () => setIsRunning(false));
+    tfjsRunner.on('error', (err: Error) => {
+      setIsRunning(false);
+      setLiveWarning(err.message);
+    });
+    // For demo: always use MNIST for now
+    await tfjsRunner.run({
+      mode,
+      networkJson: { nodes, edges },
+      dataset: 'mnist',
+      epochs: totalEpochs,
+      batchSize: 32,
+      onEpochEnd: () => {},
+      onNodeExecute: () => {},
+      onWarning: () => {},
+      onError: () => {},
+      onComplete: () => {},
+    });
+  };
+  const handlePause = () => { runner?.pause(); setIsPaused(true); };
+  const handleResume = () => { runner?.resume(); setIsPaused(false); };
+  const handleStop = () => { runner?.stop(); setIsRunning(false); setIsPaused(false); };
+
   return (
     <div
       ref={reactFlowWrapper}
       style={{ width: "100%", height: "100%", position: "relative" }}
     >
+      {/* Real-time execution controls */}
+      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 flex gap-2 bg-white/80 dark:bg-black/40 rounded-lg shadow p-2">
+        <Button color="primary" disabled={isRunning} onClick={() => handleRun('train')}>Run</Button>
+        <Button color="secondary" disabled={isRunning} onClick={() => handleRun('inference')}>Inference</Button>
+        <Button color="warning" disabled={!isRunning || isPaused} onClick={handlePause}>Pause</Button>
+        <Button color="success" disabled={!isRunning || !isPaused} onClick={handleResume}>Resume</Button>
+        <Button color="danger" disabled={!isRunning} onClick={handleStop}>Stop</Button>
+      </div>
+
+      {/* Live right panel: chart + tensor preview */}
+      {(isRunning || liveChartData.length > 0 || tensorPreview) && (
+        <div className="absolute top-0 right-0 h-full w-[400px] bg-white dark:bg-black/80 border-l border-default-200 z-30 flex flex-col">
+          <div className="p-4 border-b border-default-200">
+            <h3 className="font-semibold text-lg mb-2">Live Training</h3>
+            {liveWarning && <div className="text-warning mb-2">{liveWarning}</div>}
+            <ResponsiveContainer width="100%" height={180}>
+              <LineChart data={liveChartData} margin={{ left: 10, right: 10, top: 10, bottom: 10 }}>
+                <XAxis dataKey="epoch" />
+                <YAxis />
+                <ChartTooltip />
+                <Legend />
+                <Line type="monotone" dataKey="loss" stroke="#f59e42" name="Loss" />
+                <Line type="monotone" dataKey="acc" stroke="#3b82f6" name="Accuracy" />
+              </LineChart>
+            </ResponsiveContainer>
+            <div className="text-xs mt-2">Epoch: {currentEpoch} / {totalEpochs}</div>
+          </div>
+          {inferenceMode && tensorPreview && (
+            <div className="p-4 overflow-auto flex-1">
+              <h4 className="font-semibold mb-2">Tensor Preview</h4>
+              <pre className="bg-default-100 rounded p-2 text-xs max-h-60 overflow-auto">{JSON.stringify(tensorPreview, null, 2)}</pre>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Main ReactFlow canvas */}
       <ReactFlow
         fitView
         connectionMode={ConnectionMode.Loose}
@@ -644,10 +796,10 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
           ...node,
           style: {
             ...node.style,
-            ...(selectedNodeId === node.id
+            ...(selectedNodeId === node.id || highlightedNode === node.id
               ? {
-                  boxShadow: "0 0 0 3px #3b82f6",
-                  border: "2px solid #3b82f6",
+                  boxShadow: "0 0 0 3px #f59e42",
+                  border: "2px solid #f59e42",
                 }
               : {}),
           },

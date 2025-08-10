@@ -1,3 +1,50 @@
+import { LineChart, Line, XAxis, YAxis, Tooltip as ChartTooltip, Legend, ResponsiveContainer } from 'recharts';
+// Graph Node - Visualizes training metrics
+const GraphNode = ({ data, type, selected, isConnectable }: NodeProps) => {
+  // data.metricsHistory: [{epoch, loss, acc}]
+  const metricsHistory = data.metricsHistory || [];
+  return (
+    <div
+      className={clsx(
+        "bg-gradient-to-r from-blue-700 to-blue-400 text-white rounded-lg shadow-lg border-2",
+        "min-w-[220px] max-w-[320px] transition-all duration-200 p-2",
+        selected ? "border-white ring-2 ring-blue-300" : "border-transparent",
+      )}
+    >
+      <Handle
+        className={nodeStyles.handle}
+        isConnectable={isConnectable}
+        position={Position.Left}
+        type="target"
+      />
+      <div className="flex items-center gap-2 mb-1">
+        <Icon className="w-5 h-5" icon="lucide:line-chart" />
+        <div>
+          <div className="font-bold text-sm">Training Graph</div>
+          <div className="text-xs opacity-80">Live Loss & Accuracy</div>
+        </div>
+      </div>
+      <div className="bg-white rounded p-1 mt-1 mb-1" style={{ height: 120 }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={metricsHistory} margin={{ left: 5, right: 5, top: 5, bottom: 5 }}>
+            <XAxis dataKey="epoch" tick={{ fontSize: 10 }} />
+            <YAxis tick={{ fontSize: 10 }} />
+            <ChartTooltip />
+            <Legend />
+            <Line type="monotone" dataKey="loss" stroke="#f59e42" name="Loss" dot={false} />
+            <Line type="monotone" dataKey="acc" stroke="#3b82f6" name="Accuracy" dot={false} />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+      <Handle
+        className={nodeStyles.handle}
+        isConnectable={isConnectable}
+        position={Position.Right}
+        type="source"
+      />
+    </div>
+  );
+};
 import React, { memo, useState } from "react";
 import { Handle, Position, NodeProps } from "reactflow";
 import { Icon } from "@iconify/react";
@@ -1338,6 +1385,7 @@ const MetricsNode = ({ data, type, selected, isConnectable }: NodeProps) => {
 
 // Update the nodeTypes object to use renamed layers and new text nodes
 export const nodeTypes = {
+  graphNode: memo((props: NodeProps) => <GraphNode {...props} />),
   inputLayer: memo((props: NodeProps) => <InputLayer {...props} />),
   outputLayer: memo((props: NodeProps) => <OutputLayer {...props} />),
   textInput: memo((props: NodeProps) => <TextInput {...props} />),
