@@ -25,20 +25,12 @@ const nodeTypesByCategory = [
         popularity: 98,
       },
       {
-        type: "inputLayer",
-        label: "Input Layer",
-        icon: "lucide:box",
-        details: "Neural Network Input Layer",
-        keywords: ["input", "data", "features", "entry"],
-        popularity: 95,
-      },
-      {
-        type: "outputLayer",
-        label: "Output Layer",
-        icon: "lucide:arrow-right",
-        details: "Neural Network Output Layer",
-        keywords: ["output", "prediction", "result", "final"],
-        popularity: 95,
+        type: "neuralLayer",
+        label: "Neural Layer Stack",
+        icon: "lucide:layers",
+        details: "Unified input → hidden → output",
+        keywords: ["neural", "layer", "stack", "input", "output", "dense", "hidden", "playground"],
+        popularity: 99,
       },
       {
         type: "textInput",
@@ -69,22 +61,7 @@ const nodeTypesByCategory = [
   {
     category: "Core",
     nodes: [
-      {
-        type: "dense",
-        label: "Dense",
-        icon: "lucide:grid",
-        details: "Dense Layer",
-        keywords: ["dense", "fully connected", "fc", "linear"],
-        popularity: 90,
-      },
-      {
-        type: "hidden",
-        label: "Hidden",
-        icon: "lucide:layers",
-        details: "Hidden Layer",
-        keywords: ["hidden", "intermediate", "middle"],
-        popularity: 75,
-      },
+  // removed dense/hidden, replaced by neuralLayer
       {
         type: "flatten",
         label: "Flatten",

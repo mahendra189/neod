@@ -73,11 +73,11 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
       id: "inputlayer-1",
       type: "inputLayer",
       data: {
-        label: "Input Layer (784)",
+        label: "Input Layer (10)",
         icon: "lucide:square-dot-minus",
         details: "MNIST input layer - 28x28 flattened",
-        count: 784,
-        params: { shape: [784] },
+        count: 10,
+        params: { shape: [10] },
         onChange: (newCount: number) => {
           setNodes((nds) =>
             nds.map((node) =>
@@ -96,34 +96,6 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
         },
       },
       position: { x: 300, y: 200 },
-    },
-    {
-      id: "dense-1",
-      type: "dense",
-      data: {
-        label: "Dense (32)",
-        icon: "lucide:grid",
-        details: "32 neurons, ReLU activation",
-        count: 32,
-        params: { units: 32, activation: "relu" },
-        onChange: (newCount: number) => {
-          setNodes((nds) =>
-            nds.map((node) =>
-              node.id === "dense-1"
-                ? {
-                    ...node,
-                    data: {
-                      ...node.data,
-                      count: Math.max(1, newCount),
-                      params: { ...node.data.params, units: newCount },
-                    },
-                  }
-                : node,
-            ),
-          );
-        },
-      },
-      position: { x: 550, y: 200 },
     },
     {
       id: "output-1",
@@ -278,7 +250,7 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
   const [inferenceMode, setInferenceMode] = useState(false);
   const [liveWarning, setLiveWarning] = useState<string | null>(null);
   const [framework, setFramework] = useState<"tensorflow" | "pytorch">(
-    "tensorflow",
+    "pytorch",
   );
   const [generatedCode, setGeneratedCode] = useState("");
   const [error, setError] = useState("");
@@ -605,12 +577,13 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
 
   // Inline model analysis logic for instant feedback
   useEffect(() => {
-    // --- ModelValidator logic (sync, simplified) ---
+    // --- ModelValidator logic (robust) ---
     const inputNodes = nodes.filter((n: Node) => n.type === "inputLayer" || n.type === "textInput");
     const outputNodes = nodes.filter((n: Node) => n.type === "outputLayer");
     const denseNodes = nodes.filter((n: Node) => n.type === "dense");
     const dropoutNodes = nodes.filter((n: Node) => n.type === "dropout");
     const convNodes = nodes.filter((n: Node) => n.type === "conv2d");
+    const trainingConfigNodes = nodes.filter((n: Node) => n.type === "training_config");
     const issues: any[] = [];
     // Validation checks
     if (inputNodes.length === 0) {
@@ -644,7 +617,63 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
         description: "Some nodes are not connected to the main network flow.",
       });
     }
-    // More checks can be added here...
+    // Check for required connections to Training Config node
+    trainingConfigNodes.forEach(tcNode => {
+      const tcEdges = edges.filter(e => e.target === tcNode.id);
+      const hasOptimizer = tcEdges.some(e => e.targetHandle === 'optimizer');
+      const hasLoss = tcEdges.some(e => e.targetHandle === 'loss');
+      const hasY = tcEdges.some(e => e.targetHandle === 'y');
+      const hasNetwork = tcEdges.some(e => e.targetHandle === 'network');
+      if (!hasOptimizer) {
+        issues.push({
+          id: `tc-no-optimizer-${tcNode.id}`,
+          type: "error",
+          title: "Training Config Missing Optimizer",
+          description: "Connect an optimizer node to the Training Config node.",
+        });
+      }
+      if (!hasLoss) {
+        issues.push({
+          id: `tc-no-loss-${tcNode.id}`,
+          type: "error",
+          title: "Training Config Missing Loss",
+          description: "Connect a loss node to the Training Config node.",
+        });
+      }
+      if (!hasY) {
+        issues.push({
+          id: `tc-no-y-${tcNode.id}`,
+          type: "error",
+          title: "Training Config Missing y (target)",
+          description: "Connect the y (target) output from Database Config to the Training Config node.",
+        });
+      }
+      if (!hasNetwork) {
+        issues.push({
+          id: `tc-no-network-${tcNode.id}`,
+          type: "error",
+          title: "Training Config Missing Network",
+          description: "Connect the last layer of your model to the Training Config node.",
+        });
+      }
+    });
+    // Check for shape mismatches between connected nodes (basic check: count property)
+    edges.forEach(edge => {
+      const sourceNode = nodes.find(n => n.id === edge.source);
+      const targetNode = nodes.find(n => n.id === edge.target);
+      if (sourceNode && targetNode && sourceNode.data && targetNode.data) {
+        if (typeof sourceNode.data.count === 'number' && typeof targetNode.data.count === 'number') {
+          if (edge.targetHandle !== 'y' && sourceNode.data.count !== targetNode.data.count) {
+            issues.push({
+              id: `shape-mismatch-${edge.id}`,
+              type: "warning",
+              title: "Shape Mismatch",
+              description: `Node ${sourceNode.data.label || sourceNode.type} (count: ${sourceNode.data.count}) is connected to ${targetNode.data.label || targetNode.type} (count: ${targetNode.data.count}), but their sizes differ.`,
+            });
+          }
+        }
+      }
+    });
     setValidationIssues(issues);
     // Show toast for errors/warnings
     if (issues.length > 0) {

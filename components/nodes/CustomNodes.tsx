@@ -1,23 +1,110 @@
+// Unified NeuralLayerNode (TensorFlow Playground style)
+const NeuralLayerNode = ({ data, type, selected, isConnectable }: NodeProps) => {
+  const [layers, setLayers] = useState(
+    data.layers || [
+      { type: 'input', neurons: 2 },
+      { type: 'hidden', neurons: 4 },
+      { type: 'output', neurons: 1 },
+    ]
+  );
+
+  const updateLayer = (index: number, key: string, value: any) => {
+    // Error handling: only allow positive integers for neurons
+    if (key === 'neurons') {
+      let val = parseInt(value);
+      if (isNaN(val) || val < 1) val = 1;
+      value = val;
+    }
+    const newLayers = [...layers];
+    newLayers[index] = { ...newLayers[index], [key]: value };
+    setLayers(newLayers);
+    data.onChange?.(newLayers);
+  };
+
+  const addLayer = (index: number) => {
+    // Error handling: don't allow more than 20 layers
+    if (layers.length >= 20) return;
+    const newLayers = [...layers];
+    newLayers.splice(index + 1, 0, { type: 'hidden', neurons: 4 });
+    setLayers(newLayers);
+    data.onChange?.(newLayers);
+  };
+
+  const removeLayer = (index: number) => {
+    // Prevent removing input/output layers or if only 1 hidden layer left
+  const hiddenCount = layers.filter((l: { type: string; neurons: number }) => l.type === 'hidden').length;
+    if (layers.length <= 3 || index === 0 || index === layers.length - 1 || (layers[index].type === 'hidden' && hiddenCount <= 1)) return;
+    const newLayers = [...layers];
+    newLayers.splice(index, 1);
+    setLayers(newLayers);
+    data.onChange?.(newLayers);
+  };
+
+  return (
+    <div
+      className={clsx(
+        "bg-neutral-800 text-white rounded-lg shadow-lg p-3 w-48",
+        selected && "ring-2 ring-blue-400"
+      )}
+    >
+      <Handle type="target" position={Position.Left} isConnectable={isConnectable} />
+      {layers.map((layer: { type: string; neurons: number }, idx: number) => {
+  const hiddenCount = layers.filter((l: { type: string; neurons: number }) => l.type === 'hidden').length;
+        const disableRemove = layers.length <= 3 || idx === 0 || idx === layers.length - 1 || (layer.type === 'hidden' && hiddenCount <= 1);
+        const disableAdd = layers.length >= 20;
+        return (
+          <div
+            key={idx}
+            className={clsx(
+              "flex items-center justify-between p-2 mb-2 rounded",
+              layer.type === 'input' && "bg-blue-600",
+              layer.type === 'hidden' && "bg-purple-600",
+              layer.type === 'output' && "bg-green-600"
+            )}
+          >
+            <span className="text-xs">{layer.type.toUpperCase()}</span>
+            <input
+              type="number"
+              min={1}
+              max={1000}
+              value={layer.neurons}
+              onChange={(e) => updateLayer(idx, 'neurons', e.target.value)}
+              className="w-12 bg-transparent text-center text-white border-b border-white focus:outline-none"
+            />
+            {layer.type === 'hidden' && (
+              <>
+                <button onClick={() => addLayer(idx)} className="text-xs px-1" disabled={disableAdd}>+</button>
+                <button onClick={() => removeLayer(idx)} className="text-xs px-1" disabled={disableRemove}>−</button>
+              </>
+            )}
+          </div>
+        );
+      })}
+      <Handle type="source" position={Position.Right} isConnectable={isConnectable} />
+    </div>
+  );
+};
+import React, { memo, useState, useEffect } from "react";
+import { Handle, Position, NodeProps } from "reactflow";
+import { Icon } from "@iconify/react";
+import { Input, Select, SelectItem, Switch, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from "@heroui/react";
+import clsx from "clsx";
+import { nodeStyles } from "./nodeStyles";
+import { LineChart, Line, XAxis, YAxis, Tooltip as ChartTooltip, Legend, ResponsiveContainer } from 'recharts';
+
 // Database Config Node - Lets user configure dataset preprocessing
 const DatabaseConfigNode = ({ data, type, selected, isConnectable }: NodeProps) => {
-  // X/y column selection, split, shuffle, stratify, preview
-  const xColumns = data.xColumns || [];
-  const yColumns = data.yColumns || [];
-  const selectedX = data.selectedX || [];
-  const selectedY = data.selectedY || [];
-  const trainSplit = data.trainSplit ?? 0.8;
-  const shuffle = data.shuffle ?? true;
-  const stratify = data.stratify ?? false;
-  const onChange = data.onChange || (() => {});
-  // For preview, show first 3 rows if available
-  const preview = data.preview || [];
+  const [showModal, setShowModal] = useState(false);
+  // Only show minimal info on node
   return (
     <div
       className={clsx(
         'bg-gradient-to-r from-emerald-700 to-emerald-500 text-white rounded-lg shadow-lg border-2',
         'min-w-[220px] max-w-[340px] transition-all duration-200 p-3',
         selected ? 'border-white ring-2 ring-emerald-300' : 'border-transparent',
+        'cursor-pointer'
       )}
+      onDoubleClick={() => setShowModal(true)}
     >
       <Handle
         className={nodeStyles.handle}
@@ -32,76 +119,7 @@ const DatabaseConfigNode = ({ data, type, selected, isConnectable }: NodeProps) 
           <div className="text-xs opacity-80">Preprocess & Split Dataset</div>
         </div>
       </div>
-      <div className="mb-2">
-        <div className="text-xs font-semibold mb-1">Select X (features):</div>
-        <Select
-          multiple
-          className="w-full text-black text-xs"
-          value={selectedX}
-          onChange={val => onChange({ selectedX: val })}
-        >
-          {xColumns.map((col: string) => (
-            <SelectItem key={col}>{col}</SelectItem>
-          ))}
-        </Select>
-      </div>
-      <div className="mb-2">
-        <div className="text-xs font-semibold mb-1">Select y (target):</div>
-        <Select
-          className="w-full text-black text-xs"
-          value={selectedY}
-          onChange={val => onChange({ selectedY: [val] })}
-        >
-          {yColumns.map((col: string) => (
-            <SelectItem key={col}>{col}</SelectItem>
-          ))}
-        </Select>
-      </div>
-      <div className="flex gap-2 mb-2">
-        <div className="flex-1">
-          <div className="text-xs font-semibold mb-1">Train Split</div>
-          <Input
-            type="number"
-            min={0.5}
-            max={0.99}
-            step={0.01}
-            value={trainSplit}
-            onChange={e => onChange({ trainSplit: parseFloat(e.target.value) })}
-            className="w-full text-black text-xs"
-          />
-        </div>
-        <div className="flex flex-col justify-end">
-          <label className="text-xs flex items-center gap-1">
-            <Switch checked={shuffle} onChange={val => onChange({ shuffle: val })} /> Shuffle
-          </label>
-          <label className="text-xs flex items-center gap-1">
-            <Switch checked={stratify} onChange={val => onChange({ stratify: val })} /> Stratify
-          </label>
-        </div>
-      </div>
-      {preview.length > 0 && (
-        <div className="bg-white/80 text-black rounded p-1 text-xs mt-2 overflow-x-auto">
-          <div className="font-semibold mb-1">Preview</div>
-          <table className="w-full text-xs">
-            <thead>
-              <tr>
-                {Object.keys(preview[0]).map((col) => (
-                  <th key={col} className="px-1 text-left">{col}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {preview.slice(0, 3).map((row: any, i: number) => (
-                <tr key={i}>
-                  {Object.values(row).map((val: any, j: number) => (
-                    <td key={j} className="px-1">{val}</td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <div className="text-xs">Double-click to configure</div>
       {/* Output handles for X and y */}
       <Handle
         id="x"
@@ -125,16 +143,87 @@ const DatabaseConfigNode = ({ data, type, selected, isConnectable }: NodeProps) 
       <div className="absolute right-2" style={{ top: '58%' }}>
         <span className="bg-emerald-900 text-xs px-1 rounded">y</span>
       </div>
+      {showModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white text-black rounded-lg shadow-lg p-6 min-w-[320px] relative">
+            <button className="absolute top-2 right-2 text-lg" onClick={() => setShowModal(false)}>&times;</button>
+            <div className="font-bold mb-2">Database Config</div>
+            <div className="mb-2">
+              <div className="text-xs font-semibold mb-1">Select X (features):</div>
+              <Select
+                multiple
+                className="w-full text-black text-xs"
+                value={data.selectedX || []}
+                onChange={val => data.onChange?.({ selectedX: val })}
+              >
+                {(data.xColumns || []).map((col: string) => (
+                  <SelectItem key={col}>{col}</SelectItem>
+                ))}
+              </Select>
+            </div>
+            <div className="mb-2">
+              <div className="text-xs font-semibold mb-1">Select y (target):</div>
+              <Select
+                className="w-full text-black text-xs"
+                value={data.selectedY || []}
+                onChange={val => data.onChange?.({ selectedY: [val] })}
+              >
+                {(data.yColumns || []).map((col: string) => (
+                  <SelectItem key={col}>{col}</SelectItem>
+                ))}
+              </Select>
+            </div>
+            <div className="flex gap-2 mb-2">
+              <div className="flex-1">
+                <div className="text-xs font-semibold mb-1">Train Split</div>
+                <Input
+                  type="number"
+                  min={0.5}
+                  max={0.99}
+                  step={0.01}
+                  value={data.trainSplit ?? 0.8}
+                  onChange={e => data.onChange?.({ trainSplit: parseFloat(e.target.value) })}
+                  className="w-full text-black text-xs"
+                />
+              </div>
+              <div className="flex flex-col justify-end">
+                <label className="text-xs flex items-center gap-1">
+                  <Switch checked={data.shuffle ?? true} onChange={val => data.onChange?.({ shuffle: val })} /> Shuffle
+                </label>
+                <label className="text-xs flex items-center gap-1">
+                  <Switch checked={data.stratify ?? false} onChange={val => data.onChange?.({ stratify: val })} /> Stratify
+                </label>
+              </div>
+            </div>
+            {Array.isArray(data.preview) && data.preview.length > 0 && (
+              <div className="bg-white/80 text-black rounded p-1 text-xs mt-2 overflow-x-auto">
+                <div className="font-semibold mb-1">Preview</div>
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr>
+                      {Object.keys(data.preview[0]).map((col) => (
+                        <th key={col} className="px-1 text-left">{col}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.preview.slice(0, 3).map((row: any, i: number) => (
+                      <tr key={i}>
+                        {Object.values(row).map((val: any, j: number) => (
+                          <td key={j} className="px-1">{val}</td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
-import React, { memo, useState } from "react";
-import { Handle, Position, NodeProps } from "reactflow";
-import { Icon } from "@iconify/react";
-import { Input, Select, SelectItem, Switch } from "@heroui/react";
-import clsx from "clsx";
-import { nodeStyles } from "./nodeStyles";
-import { LineChart, Line, XAxis, YAxis, Tooltip as ChartTooltip, Legend, ResponsiveContainer } from 'recharts';
 
 // Dataset Node - Lets user select dataset for training
 const DatasetNode = ({ data, type, selected, isConnectable }: NodeProps) => {
@@ -241,6 +330,65 @@ const GraphNode = ({ data, type, selected, isConnectable }: NodeProps) => {
 };
 // (imports already at top of file)
 
+// Dropout Node with Modal
+const DropoutNode = ({ data, type, selected, isConnectable }: NodeProps) => {
+  const [showModal, setShowModal] = useState(false);
+  const handleRateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = parseFloat(e.target.value);
+    data.onChange?.({ ...data, params: { ...data.params, rate: value } });
+  };
+  return (
+    <>
+      <div
+        className={clsx(
+          "w-16 h-16 rounded-full flex flex-col items-center justify-center shadow-md group relative cursor-pointer",
+          "transition-all duration-200",
+          selected ? "ring-2 ring-pink-300 shadow-lg" : "",
+          "bg-pink-500",
+        )}
+        onDoubleClick={() => setShowModal(true)}
+      >
+        <Handle
+          className={nodeStyles.handle}
+          isConnectable={isConnectable}
+          position={Position.Left}
+          type="target"
+        />
+        <span className="text-white text-xs font-medium">Dropout</span>
+        <span className="text-white text-xs">{data.params?.rate ?? 0.5}</span>
+        <Handle
+          className={nodeStyles.handle}
+          isConnectable={isConnectable}
+          position={Position.Right}
+          type="source"
+        />
+      </div>
+      <Modal isOpen={showModal} onClose={() => setShowModal(false)}>
+        <ModalContent>
+          <ModalHeader>Configure Dropout</ModalHeader>
+          <ModalBody>
+            <div className="flex flex-col gap-2">
+              <label className="text-xs font-semibold">Dropout Rate (0-1)</label>
+              <input
+                className="w-full border rounded p-1 text-xs"
+                type="number"
+                min="0"
+                max="1"
+                step="0.01"
+                value={data.params?.rate ?? 0.5}
+                onChange={handleRateChange}
+              />
+            </div>
+          </ModalBody>
+          <ModalFooter>
+            <button className="px-4 py-1 rounded bg-pink-500 text-white" onClick={() => setShowModal(false)}>Close</button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+    </>
+  );
+};
+
 const BaseNode = ({ data, type, selected, isConnectable }: NodeProps) => {
   const isProcessing = data.isProcessing || false;
   const activationLevel = data.activationLevel || 0;
@@ -297,149 +445,127 @@ const BaseNode = ({ data, type, selected, isConnectable }: NodeProps) => {
   );
 };
 
-const InputLayer = ({ data, type, selected, isConnectable }: NodeProps) => {
-  // Show warning if inputFrom is not 'x' (from DatabaseConfigNode)
-  const showInputWarning = data.inputFrom && data.inputFrom !== 'x';
+
+// Combined Input/Output Node
+const InputOutputNode = ({ data, type, selected, isConnectable }: NodeProps) => {
+  // type: 'inputLayer' or 'outputLayer'
+  const [count, setCount] = useState(data.count || 1);
+  const label = type === 'inputLayer' ? 'Input Neurons' : 'Output Neurons';
+  const color = type === 'inputLayer' ? 'bg-blue-500' : 'bg-green-500';
+
   const handleCountChange = (delta: number) => {
-    data.onChange?.(data.count + delta);
+    const newCount = Math.max(1, count + delta);
+    setCount(newCount);
+    data.onChange?.(newCount);
   };
+
+  useEffect(() => {
+    setCount(data.count || 1);
+  }, [data.count]);
 
   return (
     <div
       className={clsx(
-        "w-16 h-16 rounded-full flex flex-col items-center justify-center shadow-md group relative",
-        "transition-all duration-200",
-        selected ? "ring-2 ring-blue-300 shadow-lg" : "",
-        type === "inputLayer" ? "bg-blue-500" : "bg-blue-400",
+        `w-32 rounded-lg flex flex-col items-center justify-center shadow-md relative cursor-pointer p-4`,
+        selected ? 'ring-2 ring-blue-300 shadow-lg' : '',
+        color
       )}
     >
-      {showInputWarning && (
-        <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-yellow-200 text-yellow-900 text-xs px-2 py-1 rounded shadow">
-          Warning: Input should be connected to X (features)
+      <Handle
+        className={nodeStyles.handle}
+        isConnectable={isConnectable}
+        position={type === 'inputLayer' ? Position.Right : Position.Left}
+        type={type === 'inputLayer' ? 'source' : 'target'}
+      />
+      <div className="font-bold text-white mb-2 text-sm">{label}</div>
+      <div className="flex items-center gap-2">
+        <button
+          className="bg-white text-black rounded-full w-6 h-6 flex items-center justify-center text-lg font-bold"
+          onClick={() => handleCountChange(-1)}
+        >
+          -
+        </button>
+        <span className="text-lg font-mono text-white">{count}</span>
+        <button
+          className="bg-white text-black rounded-full w-6 h-6 flex items-center justify-center text-lg font-bold"
+          onClick={() => handleCountChange(1)}
+        >
+          +
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// Combined Dense/Hidden Node (like TensorFlow Playground)
+const DenseHiddenNode = ({ data, type, selected, isConnectable }: NodeProps) => {
+  // type: 'dense' or 'hidden'
+  const [numLayers, setNumLayers] = useState(data.numLayers || 1);
+  const [neuronsPerLayer, setNeuronsPerLayer] = useState(data.neuronsPerLayer || 4);
+
+  const handleLayerChange = (delta: number) => {
+    const newLayers = Math.max(1, numLayers + delta);
+    setNumLayers(newLayers);
+    data.onChange?.({ ...data, numLayers: newLayers, neuronsPerLayer });
+  };
+  const handleNeuronChange = (delta: number) => {
+    const newNeurons = Math.max(1, neuronsPerLayer + delta);
+    setNeuronsPerLayer(newNeurons);
+    data.onChange?.({ ...data, numLayers, neuronsPerLayer: newNeurons });
+  };
+
+  useEffect(() => {
+    setNumLayers(data.numLayers || 1);
+    setNeuronsPerLayer(data.neuronsPerLayer || 4);
+  }, [data.numLayers, data.neuronsPerLayer]);
+
+  return (
+    <div
+      className={clsx(
+        'w-40 rounded-lg flex flex-col items-center justify-center shadow-md relative cursor-pointer p-4 bg-purple-600',
+        selected ? 'ring-2 ring-purple-300 shadow-lg' : ''
+      )}
+    >
+      <Handle
+        className={nodeStyles.handle}
+        isConnectable={isConnectable}
+        position={Position.Left}
+        type="target"
+      />
+      <div className="font-bold text-white mb-2 text-sm">Dense/Hidden Layers</div>
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-white">Layers</span>
+          <button
+            className="bg-white text-black rounded-full w-6 h-6 flex items-center justify-center text-lg font-bold"
+            onClick={() => handleLayerChange(-1)}
+          >
+            -
+          </button>
+          <span className="text-lg font-mono text-white">{numLayers}</span>
+          <button
+            className="bg-white text-black rounded-full w-6 h-6 flex items-center justify-center text-lg font-bold"
+            onClick={() => handleLayerChange(1)}
+          >
+            +
+          </button>
         </div>
-      )}
-      <Handle
-        className={nodeStyles.handle}
-        isConnectable={isConnectable}
-        position={Position.Left}
-        type="target"
-      />
-      <span className="text-white text-xs font-medium">Input</span>
-      <span className="text-white text-xs">{data.count || 0}</span>
-      <div className="absolute opacity-0 group-hover:opacity-100 flex gap-1 -bottom-8 bg-white rounded-md shadow-md p-1">
-        <button
-          className="text-blue-500 hover:text-blue-700 px-2 py-1"
-          onClick={() => handleCountChange(-1)}
-        >
-          -
-        </button>
-        <button
-          className="text-blue-500 hover:text-blue-700 px-2 py-1"
-          onClick={() => handleCountChange(1)}
-        >
-          +
-        </button>
-      </div>
-      <Handle
-        className={nodeStyles.handle}
-        isConnectable={isConnectable}
-        position={Position.Right}
-        type="source"
-      />
-    </div>
-  );
-};
-
-const HiddenLayer = ({ data, type, selected, isConnectable }: NodeProps) => {
-  const handleCountChange = (delta: number) => {
-    data.onChange?.(data.count + delta);
-  };
-
-  return (
-    <div
-      className={clsx(
-        "w-16 h-16 rounded-full flex flex-col items-center justify-center shadow-md group relative",
-        "transition-all duration-200",
-        selected ? "ring-2 ring-purple-300 shadow-lg" : "",
-        type === "hidden" ? "bg-purple-500" : "bg-purple-400",
-      )}
-    >
-      <Handle
-        className={nodeStyles.handle}
-        isConnectable={isConnectable}
-        position={Position.Left}
-        type="target"
-      />
-      <span className="text-white text-sm font-medium">Hidden</span>
-      <span className="text-white text-xs">{data.count || 0}</span>
-      <div className="absolute opacity-0 group-hover:opacity-100 flex gap-1 -bottom-8 bg-white rounded-md shadow-md p-1">
-        <button
-          className="text-purple-500 hover:text-purple-700 px-2 py-1"
-          onClick={() => handleCountChange(-1)}
-        >
-          -
-        </button>
-        <button
-          className="text-purple-500 hover:text-purple-700 px-2 py-1"
-          onClick={() => handleCountChange(1)}
-        >
-          +
-        </button>
-      </div>
-      <Handle
-        className={nodeStyles.handle}
-        isConnectable={isConnectable}
-        position={Position.Right}
-        type="source"
-      />
-    </div>
-  );
-};
-
-const OutputLayer = ({ data, type, selected, isConnectable }: NodeProps) => {
-  // Show warning if inputFrom is not 'y' (from DatabaseConfigNode)
-  const showOutputWarning = data.inputFrom && data.inputFrom !== 'y';
-  const handleCountChange = (delta: number) => {
-    data.onChange?.(data.count + delta);
-  };
-
-  return (
-    <div
-      className={clsx(
-        "w-16 h-16 rounded-full flex flex-col items-center justify-center shadow-md group relative",
-        "transition-all duration-200",
-        selected ? "ring-2 ring-green-300 shadow-lg" : "",
-        "bg-green-500",
-      )}
-    >
-      {showOutputWarning && (
-        <div className="absolute -top-7 left-1/2 -translate-x-1/2 bg-yellow-200 text-yellow-900 text-xs px-2 py-1 rounded shadow">
-          Warning: Output should be connected to y (target)
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-white">Neurons/layer</span>
+          <button
+            className="bg-white text-black rounded-full w-6 h-6 flex items-center justify-center text-lg font-bold"
+            onClick={() => handleNeuronChange(-1)}
+          >
+            -
+          </button>
+          <span className="text-lg font-mono text-white">{neuronsPerLayer}</span>
+          <button
+            className="bg-white text-black rounded-full w-6 h-6 flex items-center justify-center text-lg font-bold"
+            onClick={() => handleNeuronChange(1)}
+          >
+            +
+          </button>
         </div>
-      )}
-      {/* Accept both X and y connections by specifying id for the target handle */}
-      <Handle
-        id="output-input"
-        className={nodeStyles.handle}
-        isConnectable={isConnectable}
-        position={Position.Left}
-        type="target"
-      />
-      <span className="text-white text-xs font-medium">Output</span>
-      <span className="text-white text-xs">{data.count || 0}</span>
-      <div className="absolute opacity-0 group-hover:opacity-100 flex gap-1 -bottom-8 bg-white rounded-md shadow-md p-1">
-        <button
-          className="text-green-500 hover:text-green-700 px-2 py-1"
-          onClick={() => handleCountChange(-1)}
-        >
-          -
-        </button>
-        <button
-          className="text-green-500 hover:text-green-700 px-2 py-1"
-          onClick={() => handleCountChange(1)}
-        >
-          +
-        </button>
       </div>
       <Handle
         className={nodeStyles.handle}
@@ -450,6 +576,7 @@ const OutputLayer = ({ data, type, selected, isConnectable }: NodeProps) => {
     </div>
   );
 };
+
 
 const TextInput = ({ data, type, selected, isConnectable }: NodeProps) => {
   const [inputValue, setInputValue] = React.useState(data.value || "");
@@ -555,7 +682,7 @@ const TextOutput = ({ data, type, selected, isConnectable }: NodeProps) => {
 
 // Optimizer Nodes with Hyperparameters
 const OptimizerNode = ({ data, type, selected, isConnectable }: NodeProps) => {
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [showModal, setShowModal] = useState(false);
 
   const getOptimizerDefaults = () => {
     switch (type) {
@@ -592,161 +719,139 @@ const OptimizerNode = ({ data, type, selected, isConnectable }: NodeProps) => {
   };
 
   return (
-    <div
-      className={clsx(
-        "bg-gradient-to-r from-orange-400 to-pink-400 text-white rounded-lg shadow-lg border-2",
-        "min-w-[200px] transition-all duration-200",
-        selected ? "border-white ring-2 ring-orange-300" : "border-transparent",
-        isExpanded ? "min-h-[300px]" : "h-[80px]",
-      )}
-    >
-      <Handle
-        className={nodeStyles.handle}
-        isConnectable={isConnectable}
-        position={Position.Left}
-        type="target"
-      />
-
+    <>
       <div
-        className="p-4 cursor-pointer flex items-center justify-between"
-        onClick={() => setIsExpanded(!isExpanded)}
+        className={clsx(
+          "bg-gradient-to-r from-orange-400 to-pink-400 text-white rounded-lg shadow-lg border-2",
+          "min-w-[200px] transition-all duration-200",
+          selected ? "border-white ring-2 ring-orange-300" : "border-transparent",
+        )}
+        onDoubleClick={() => setShowModal(true)}
       >
-        <div className="flex items-center gap-2">
+        <Handle
+          className={nodeStyles.handle}
+          isConnectable={isConnectable}
+          position={Position.Left}
+          type="target"
+        />
+        <div className="flex items-center gap-2 p-2">
           <Icon className="w-5 h-5" icon={data.icon} />
           <div>
             <div className="font-bold text-sm">{data.label}</div>
             <div className="text-xs opacity-80">{data.details}</div>
           </div>
         </div>
-        <Icon
-          className="w-4 h-4"
-          icon={isExpanded ? "lucide:chevron-up" : "lucide:chevron-down"}
+        <div className="text-xs">Double-click to configure</div>
+        <Handle
+          className={nodeStyles.handle}
+          isConnectable={isConnectable}
+          position={Position.Right}
+          type="source"
         />
       </div>
-
-      {isExpanded && (
-        <div className="px-4 pb-4 space-y-3">
-          <div className="text-xs font-semibold opacity-90">
-            Hyperparameters:
-          </div>
-
-          {type === "adam" || type === "adamw" ? (
-            <>
-              <div className="space-y-2">
-                <label className="text-xs">Learning Rate</label>
-                <Input
-                  className="text-gray-800"
-                  size="sm"
-                  step="0.0001"
-                  type="number"
-                  value={params.lr?.toString()}
-                  onChange={(e) =>
-                    updateParam("lr", parseFloat(e.target.value))
-                  }
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="text-xs">Beta1</label>
+      <Modal isOpen={showModal} onClose={() => setShowModal(false)}>
+        <ModalContent>
+          <ModalHeader>Configure Optimizer</ModalHeader>
+          <ModalBody>
+            <div className="flex flex-col gap-2">
+              <div className="text-xs font-semibold opacity-90">Hyperparameters:</div>
+              {type === "adam" || type === "adamw" ? (
+                <>
+                  <label className="text-xs">Learning Rate</label>
                   <Input
                     className="text-gray-800"
                     size="sm"
-                    step="0.01"
+                    step="0.0001"
                     type="number"
-                    value={params.beta1?.toString()}
-                    onChange={(e) =>
-                      updateParam("beta1", parseFloat(e.target.value))
-                    }
+                    value={params.lr?.toString()}
+                    onChange={(e) => updateParam("lr", parseFloat(e.target.value))}
                   />
-                </div>
-                <div>
-                  <label className="text-xs">Beta2</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-xs">Beta1</label>
+                      <Input
+                        className="text-gray-800"
+                        size="sm"
+                        step="0.01"
+                        type="number"
+                        value={params.beta1?.toString()}
+                        onChange={(e) => updateParam("beta1", parseFloat(e.target.value))}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs">Beta2</label>
+                      <Input
+                        className="text-gray-800"
+                        size="sm"
+                        step="0.001"
+                        type="number"
+                        value={params.beta2?.toString()}
+                        onChange={(e) => updateParam("beta2", parseFloat(e.target.value))}
+                      />
+                    </div>
+                  </div>
+                  {type === "adamw" && (
+                    <div className="space-y-2">
+                      <label className="text-xs">Weight Decay</label>
+                      <Input
+                        className="text-gray-800"
+                        size="sm"
+                        step="0.001"
+                        type="number"
+                        value={params.weight_decay?.toString()}
+                        onChange={(e) => updateParam("weight_decay", parseFloat(e.target.value))}
+                      />
+                    </div>
+                  )}
+                </>
+              ) : type === "sgd" ? (
+                <>
+                  <label className="text-xs">Learning Rate</label>
                   <Input
                     className="text-gray-800"
                     size="sm"
                     step="0.001"
                     type="number"
-                    value={params.beta2?.toString()}
-                    onChange={(e) =>
-                      updateParam("beta2", parseFloat(e.target.value))
-                    }
+                    value={params.lr?.toString()}
+                    onChange={(e) => updateParam("lr", parseFloat(e.target.value))}
                   />
-                </div>
-              </div>
-              {type === "adamw" && (
-                <div className="space-y-2">
-                  <label className="text-xs">Weight Decay</label>
+                  <label className="text-xs">Momentum</label>
+                  <Input
+                    className="text-gray-800"
+                    size="sm"
+                    step="0.1"
+                    type="number"
+                    value={params.momentum?.toString()}
+                    onChange={(e) => updateParam("momentum", parseFloat(e.target.value))}
+                  />
+                </>
+              ) : (
+                <>
+                  <label className="text-xs">Learning Rate</label>
                   <Input
                     className="text-gray-800"
                     size="sm"
                     step="0.001"
                     type="number"
-                    value={params.weight_decay?.toString()}
-                    onChange={(e) =>
-                      updateParam("weight_decay", parseFloat(e.target.value))
-                    }
+                    value={params.lr?.toString()}
+                    onChange={(e) => updateParam("lr", parseFloat(e.target.value))}
                   />
-                </div>
+                </>
               )}
-            </>
-          ) : type === "sgd" ? (
-            <>
-              <div className="space-y-2">
-                <label className="text-xs">Learning Rate</label>
-                <Input
-                  className="text-gray-800"
-                  size="sm"
-                  step="0.001"
-                  type="number"
-                  value={params.lr?.toString()}
-                  onChange={(e) =>
-                    updateParam("lr", parseFloat(e.target.value))
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-xs">Momentum</label>
-                <Input
-                  className="text-gray-800"
-                  size="sm"
-                  step="0.1"
-                  type="number"
-                  value={params.momentum?.toString()}
-                  onChange={(e) =>
-                    updateParam("momentum", parseFloat(e.target.value))
-                  }
-                />
-              </div>
-            </>
-          ) : (
-            <div className="space-y-2">
-              <label className="text-xs">Learning Rate</label>
-              <Input
-                className="text-gray-800"
-                size="sm"
-                step="0.001"
-                type="number"
-                value={params.lr?.toString()}
-                onChange={(e) => updateParam("lr", parseFloat(e.target.value))}
-              />
             </div>
-          )}
-        </div>
-      )}
-
-      <Handle
-        className={nodeStyles.handle}
-        isConnectable={isConnectable}
-        position={Position.Right}
-        type="source"
-      />
-    </div>
+          </ModalBody>
+          <ModalFooter>
+            <button className="px-4 py-1 rounded bg-orange-500 text-white" onClick={() => setShowModal(false)}>Close</button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+    </>
   );
 };
 
 // Algorithm Nodes with Architecture-specific parameters
 const AlgorithmNode = ({ data, type, selected, isConnectable }: NodeProps) => {
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [showModal, setShowModal] = useState(false);
 
   const getAlgorithmDefaults = () => {
     switch (type) {
@@ -832,269 +937,211 @@ const AlgorithmNode = ({ data, type, selected, isConnectable }: NodeProps) => {
   };
 
   return (
-    <div
-      className={clsx(
-        `bg-gradient-to-r ${getNodeColor()} text-white rounded-lg shadow-lg border-2`,
-        "min-w-[220px] transition-all duration-200",
-        selected ? "border-white ring-2 ring-blue-300" : "border-transparent",
-        isExpanded ? "min-h-[350px]" : "h-[80px]",
-      )}
-    >
-      <Handle
-        className={nodeStyles.handle}
-        isConnectable={isConnectable}
-        position={Position.Left}
-        type="target"
-      />
-
+    <>
       <div
-        className="p-4 cursor-pointer flex items-center justify-between"
-        onClick={() => setIsExpanded(!isExpanded)}
+        className={clsx(
+          `bg-gradient-to-r ${getNodeColor()} text-white rounded-lg shadow-lg border-2`,
+          "min-w-[220px] transition-all duration-200",
+          selected ? "border-white ring-2 ring-blue-300" : "border-transparent",
+        )}
+        onDoubleClick={() => setShowModal(true)}
       >
-        <div className="flex items-center gap-2">
+        <Handle
+          className={nodeStyles.handle}
+          isConnectable={isConnectable}
+          position={Position.Left}
+          type="target"
+        />
+        <div className="flex items-center gap-2 p-2">
           <Icon className="w-5 h-5" icon={data.icon} />
           <div>
             <div className="font-bold text-sm">{data.label}</div>
             <div className="text-xs opacity-80">{data.details}</div>
           </div>
         </div>
-        <Icon
-          className="w-4 h-4"
-          icon={isExpanded ? "lucide:chevron-up" : "lucide:chevron-down"}
+        <div className="text-xs">Double-click to configure</div>
+        <Handle
+          className={nodeStyles.handle}
+          isConnectable={isConnectable}
+          position={Position.Right}
+          type="source"
         />
       </div>
-
-      {isExpanded && (
-        <div className="px-4 pb-4 space-y-3 max-h-[270px] overflow-y-auto">
-          <div className="text-xs font-semibold opacity-90">
-            Architecture Parameters:
-          </div>
-
-          {type === "cnn" && (
-            <>
-              <div className="space-y-2">
-                <label className="text-xs">Number of Layers</label>
-                <Input
-                  className="text-gray-800"
-                  min="1"
-                  size="sm"
-                  type="number"
-                  value={params.layers?.toString()}
-                  onChange={(e) =>
-                    updateParam("layers", parseInt(e.target.value))
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-xs">Kernel Size</label>
-                <Select
-                  className="text-gray-800"
-                  selectedKeys={[params.kernel_size?.toString()]}
-                  size="sm"
-                  onSelectionChange={(selection) =>
-                    updateParam(
-                      "kernel_size",
-                      parseInt(Array.from(selection)[0] as string),
-                    )
-                  }
-                >
-                  <SelectItem key="3">3x3</SelectItem>
-                  <SelectItem key="5">5x5</SelectItem>
-                  <SelectItem key="7">7x7</SelectItem>
-                </Select>
-              </div>
-            </>
-          )}
-
-          {(type === "rnn" || type === "lstm") && (
-            <>
-              <div className="space-y-2">
-                <label className="text-xs">Hidden Size</label>
-                <Input
-                  className="text-gray-800"
-                  size="sm"
-                  type="number"
-                  value={params.hidden_size?.toString()}
-                  onChange={(e) =>
-                    updateParam("hidden_size", parseInt(e.target.value))
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-xs">Number of Layers</label>
-                <Input
-                  className="text-gray-800"
-                  min="1"
-                  size="sm"
-                  type="number"
-                  value={params.num_layers?.toString()}
-                  onChange={(e) =>
-                    updateParam("num_layers", parseInt(e.target.value))
-                  }
-                />
-              </div>
-              <div className="flex items-center gap-2">
-                <Switch
-                  isSelected={params.bidirectional}
-                  size="sm"
-                  onValueChange={(value) => updateParam("bidirectional", value)}
-                />
-                <label className="text-xs">Bidirectional</label>
-              </div>
-            </>
-          )}
-
-          {type === "transformer" && (
-            <>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="text-xs">Model Dim</label>
+      <Modal isOpen={showModal} onClose={() => setShowModal(false)}>
+        <ModalContent>
+          <ModalHeader>Configure Architecture</ModalHeader>
+          <ModalBody>
+            <div className="flex flex-col gap-2">
+              <div className="text-xs font-semibold opacity-90">Architecture Parameters:</div>
+              {type === "cnn" && (
+                <>
+                  <label className="text-xs">Number of Layers</label>
+                  <Input
+                    className="text-gray-800"
+                    min="1"
+                    size="sm"
+                    type="number"
+                    value={params.layers?.toString()}
+                    onChange={(e) => updateParam("layers", parseInt(e.target.value))}
+                  />
+                  <label className="text-xs">Kernel Size</label>
+                  <Select
+                    className="text-gray-800"
+                    selectedKeys={[params.kernel_size?.toString()]}
+                    size="sm"
+                    onSelectionChange={(selection) =>
+                      updateParam("kernel_size", parseInt(Array.from(selection)[0] as string))
+                    }
+                  >
+                    <SelectItem key="3">3x3</SelectItem>
+                    <SelectItem key="5">5x5</SelectItem>
+                    <SelectItem key="7">7x7</SelectItem>
+                  </Select>
+                </>
+              )}
+              {(type === "rnn" || type === "lstm") && (
+                <>
+                  <label className="text-xs">Hidden Size</label>
                   <Input
                     className="text-gray-800"
                     size="sm"
                     type="number"
-                    value={params.d_model?.toString()}
-                    onChange={(e) =>
-                      updateParam("d_model", parseInt(e.target.value))
-                    }
+                    value={params.hidden_size?.toString()}
+                    onChange={(e) => updateParam("hidden_size", parseInt(e.target.value))}
                   />
-                </div>
-                <div>
-                  <label className="text-xs">Heads</label>
+                  <label className="text-xs">Number of Layers</label>
+                  <Input
+                    className="text-gray-800"
+                    min="1"
+                    size="sm"
+                    type="number"
+                    value={params.num_layers?.toString()}
+                    onChange={(e) => updateParam("num_layers", parseInt(e.target.value))}
+                  />
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      isSelected={params.bidirectional}
+                      size="sm"
+                      onValueChange={(value) => updateParam("bidirectional", value)}
+                    />
+                    <label className="text-xs">Bidirectional</label>
+                  </div>
+                </>
+              )}
+              {type === "transformer" && (
+                <>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-xs">Model Dim</label>
+                      <Input
+                        className="text-gray-800"
+                        size="sm"
+                        type="number"
+                        value={params.d_model?.toString()}
+                        onChange={(e) => updateParam("d_model", parseInt(e.target.value))}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs">Heads</label>
+                      <Input
+                        className="text-gray-800"
+                        size="sm"
+                        type="number"
+                        value={params.nhead?.toString()}
+                        onChange={(e) => updateParam("nhead", parseInt(e.target.value))}
+                      />
+                    </div>
+                  </div>
+                  <label className="text-xs">Number of Layers</label>
+                  <Input
+                    className="text-gray-800"
+                    min="1"
+                    size="sm"
+                    type="number"
+                    value={params.num_layers?.toString()}
+                    onChange={(e) => updateParam("num_layers", parseInt(e.target.value))}
+                  />
+                </>
+              )}
+              {type === "autoencoder" && (
+                <>
+                  <label className="text-xs">Encoding Dimension</label>
                   <Input
                     className="text-gray-800"
                     size="sm"
                     type="number"
-                    value={params.nhead?.toString()}
-                    onChange={(e) =>
-                      updateParam("nhead", parseInt(e.target.value))
-                    }
+                    value={params.encoding_dim?.toString()}
+                    onChange={(e) => updateParam("encoding_dim", parseInt(e.target.value))}
                   />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <label className="text-xs">Number of Layers</label>
-                <Input
-                  className="text-gray-800"
-                  min="1"
-                  size="sm"
-                  type="number"
-                  value={params.num_layers?.toString()}
-                  onChange={(e) =>
-                    updateParam("num_layers", parseInt(e.target.value))
-                  }
-                />
-              </div>
-            </>
-          )}
-
-          {type === "autoencoder" && (
-            <>
-              <div className="space-y-2">
-                <label className="text-xs">Encoding Dimension</label>
-                <Input
-                  className="text-gray-800"
-                  size="sm"
-                  type="number"
-                  value={params.encoding_dim?.toString()}
-                  onChange={(e) =>
-                    updateParam("encoding_dim", parseInt(e.target.value))
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-xs">Activation</label>
-                <Select
-                  className="text-gray-800"
-                  selectedKeys={[params.activation]}
-                  size="sm"
-                  onSelectionChange={(selection) =>
-                    updateParam("activation", Array.from(selection)[0])
-                  }
-                >
-                  <SelectItem key="relu">ReLU</SelectItem>
-                  <SelectItem key="tanh">Tanh</SelectItem>
-                  <SelectItem key="sigmoid">Sigmoid</SelectItem>
-                </Select>
-              </div>
-            </>
-          )}
-
-          {type === "gan" && (
-            <div className="space-y-2">
-              <label className="text-xs">Latent Dimension</label>
-              <Input
-                className="text-gray-800"
-                size="sm"
-                type="number"
-                value={params.latent_dim?.toString()}
-                onChange={(e) =>
-                  updateParam("latent_dim", parseInt(e.target.value))
-                }
-              />
+                  <label className="text-xs">Activation</label>
+                  <Select
+                    className="text-gray-800"
+                    selectedKeys={[params.activation]}
+                    size="sm"
+                    onSelectionChange={(selection) => updateParam("activation", Array.from(selection)[0])}
+                  >
+                    <SelectItem key="relu">ReLU</SelectItem>
+                    <SelectItem key="tanh">Tanh</SelectItem>
+                    <SelectItem key="sigmoid">Sigmoid</SelectItem>
+                  </Select>
+                </>
+              )}
+              {type === "gan" && (
+                <>
+                  <label className="text-xs">Latent Dimension</label>
+                  <Input
+                    className="text-gray-800"
+                    size="sm"
+                    type="number"
+                    value={params.latent_dim?.toString()}
+                    onChange={(e) => updateParam("latent_dim", parseInt(e.target.value))}
+                  />
+                </>
+              )}
+              {type === "resnet" && (
+                <>
+                  <label className="text-xs">Depth</label>
+                  <Select
+                    className="text-gray-800"
+                    selectedKeys={[params.depth?.toString()]}
+                    size="sm"
+                    onSelectionChange={(selection) => updateParam("depth", parseInt(Array.from(selection)[0] as string))}
+                  >
+                    <SelectItem key="18">ResNet-18</SelectItem>
+                    <SelectItem key="34">ResNet-34</SelectItem>
+                    <SelectItem key="50">ResNet-50</SelectItem>
+                    <SelectItem key="101">ResNet-101</SelectItem>
+                  </Select>
+                  <label className="text-xs">Number of Classes</label>
+                  <Input
+                    className="text-gray-800"
+                    size="sm"
+                    type="number"
+                    value={params.num_classes?.toString()}
+                    onChange={(e) => updateParam("num_classes", parseInt(e.target.value))}
+                  />
+                </>
+              )}
+              {type === "vae" && (
+                <>
+                  <label className="text-xs">Latent Dimension</label>
+                  <Input
+                    className="text-gray-800"
+                    size="sm"
+                    type="number"
+                    value={params.latent_dim?.toString()}
+                    onChange={(e) => updateParam("latent_dim", parseInt(e.target.value))}
+                  />
+                </>
+              )}
             </div>
-          )}
-
-          {type === "resnet" && (
-            <>
-              <div className="space-y-2">
-                <label className="text-xs">Depth</label>
-                <Select
-                  className="text-gray-800"
-                  selectedKeys={[params.depth?.toString()]}
-                  size="sm"
-                  onSelectionChange={(selection) =>
-                    updateParam(
-                      "depth",
-                      parseInt(Array.from(selection)[0] as string),
-                    )
-                  }
-                >
-                  <SelectItem key="18">ResNet-18</SelectItem>
-                  <SelectItem key="34">ResNet-34</SelectItem>
-                  <SelectItem key="50">ResNet-50</SelectItem>
-                  <SelectItem key="101">ResNet-101</SelectItem>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <label className="text-xs">Number of Classes</label>
-                <Input
-                  className="text-gray-800"
-                  size="sm"
-                  type="number"
-                  value={params.num_classes?.toString()}
-                  onChange={(e) =>
-                    updateParam("num_classes", parseInt(e.target.value))
-                  }
-                />
-              </div>
-            </>
-          )}
-
-          {type === "vae" && (
-            <div className="space-y-2">
-              <label className="text-xs">Latent Dimension</label>
-              <Input
-                className="text-gray-800"
-                size="sm"
-                type="number"
-                value={params.latent_dim?.toString()}
-                onChange={(e) =>
-                  updateParam("latent_dim", parseInt(e.target.value))
-                }
-              />
-            </div>
-          )}
-        </div>
-      )}
-
-      <Handle
-        className={nodeStyles.handle}
-        isConnectable={isConnectable}
-        position={Position.Right}
-        type="source"
-      />
-    </div>
+          </ModalBody>
+          <ModalFooter>
+            <button className="px-4 py-1 rounded bg-blue-500 text-white" onClick={() => setShowModal(false)}>Close</button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+    </>
   );
 };
 
@@ -1111,57 +1158,69 @@ const LossNode = ({ data, type, selected, isConnectable }: NodeProps) => {
     }
   };
 
+  const [showModal, setShowModal] = useState(false);
   return (
-    <div
-      className={clsx(
-        "bg-gradient-to-r from-red-500 to-red-700 text-white rounded-lg shadow-lg border-2",
-        "min-w-[160px] transition-all duration-200 p-3",
-        selected ? "border-white ring-2 ring-red-300" : "border-transparent",
-      )}
-    >
-      <Handle
-        className={nodeStyles.handle}
-        isConnectable={isConnectable}
-        position={Position.Left}
-        type="target"
-      />
-
-      <div className="flex items-center gap-2 mb-2">
-        <Icon className="w-4 h-4" icon={data.icon} />
-        <div>
-          <div className="font-bold text-xs">{data.label}</div>
-          <div className="text-xs opacity-80">{data.details}</div>
-        </div>
-      </div>
-
-      {type === "crossentropy" && (
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <Switch
-              isSelected={params.reduction !== "none"}
-              size="sm"
-              onValueChange={(value) =>
-                updateParam("reduction", value ? "mean" : "none")
-              }
-            />
-            <label className="text-xs">Reduction</label>
+    <>
+      <div
+        className={clsx(
+          "bg-gradient-to-r from-red-500 to-red-700 text-white rounded-lg shadow-lg border-2",
+          "min-w-[160px] transition-all duration-200 p-3",
+          selected ? "border-white ring-2 ring-red-300" : "border-transparent",
+        )}
+        onDoubleClick={() => setShowModal(true)}
+      >
+        <Handle
+          className={nodeStyles.handle}
+          isConnectable={isConnectable}
+          position={Position.Left}
+          type="target"
+        />
+        <div className="flex items-center gap-2 mb-2">
+          <Icon className="w-4 h-4" icon={data.icon} />
+          <div>
+            <div className="font-bold text-xs">{data.label}</div>
+            <div className="text-xs opacity-80">{data.details}</div>
           </div>
         </div>
-      )}
-
-      <Handle
-        className={nodeStyles.handle}
-        isConnectable={isConnectable}
-        position={Position.Right}
-        type="source"
-      />
-    </div>
+        <div className="text-xs">Double-click to configure</div>
+        <Handle
+          className={nodeStyles.handle}
+          isConnectable={isConnectable}
+          position={Position.Right}
+          type="source"
+        />
+      </div>
+      <Modal isOpen={showModal} onClose={() => setShowModal(false)}>
+        <ModalContent>
+          <ModalHeader>Configure Loss Function</ModalHeader>
+          <ModalBody>
+            <div className="flex flex-col gap-2">
+              {type === "crossentropy" && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      isSelected={params.reduction !== "none"}
+                      size="sm"
+                      onValueChange={(value) => updateParam("reduction", value ? "mean" : "none")}
+                    />
+                    <label className="text-xs">Reduction</label>
+                  </div>
+                </div>
+              )}
+            </div>
+          </ModalBody>
+          <ModalFooter>
+            <button className="px-4 py-1 rounded bg-red-500 text-white" onClick={() => setShowModal(false)}>Close</button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+    </>
   );
 };
 
 // Learning Rate Scheduler Node
 const SchedulerNode = ({ data, type, selected, isConnectable }: NodeProps) => {
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [showModal, setShowModal] = useState(false);
 
   const getSchedulerDefaults = () => {
     switch (type) {
@@ -1190,138 +1249,116 @@ const SchedulerNode = ({ data, type, selected, isConnectable }: NodeProps) => {
   };
 
   return (
-    <div
-      className={clsx(
-        "bg-gradient-to-r from-yellow-500 to-orange-500 text-white rounded-lg shadow-lg border-2",
-        "min-w-[180px] transition-all duration-200",
-        selected ? "border-white ring-2 ring-yellow-300" : "border-transparent",
-        isExpanded ? "min-h-[200px]" : "h-[70px]",
-      )}
-    >
-      <Handle
-        className={nodeStyles.handle}
-        isConnectable={isConnectable}
-        position={Position.Left}
-        type="target"
-      />
-
+    <>
       <div
-        className="p-3 cursor-pointer flex items-center justify-between"
-        onClick={() => setIsExpanded(!isExpanded)}
+        className={clsx(
+          "bg-gradient-to-r from-yellow-500 to-orange-500 text-white rounded-lg shadow-lg border-2",
+          "min-w-[180px] transition-all duration-200",
+          selected ? "border-white ring-2 ring-yellow-300" : "border-transparent",
+        )}
+        onDoubleClick={() => setShowModal(true)}
       >
-        <div className="flex items-center gap-2">
+        <Handle
+          className={nodeStyles.handle}
+          isConnectable={isConnectable}
+          position={Position.Left}
+          type="target"
+        />
+        <div className="flex items-center gap-2 p-2">
           <Icon className="w-4 h-4" icon={data.icon} />
           <div>
             <div className="font-bold text-xs">{data.label}</div>
             <div className="text-xs opacity-80">{data.details}</div>
           </div>
         </div>
-        <Icon
-          className="w-3 h-3"
-          icon={isExpanded ? "lucide:chevron-up" : "lucide:chevron-down"}
+        <div className="text-xs">Double-click to configure</div>
+        <Handle
+          className={nodeStyles.handle}
+          isConnectable={isConnectable}
+          position={Position.Right}
+          type="source"
         />
       </div>
-
-      {isExpanded && (
-        <div className="px-3 pb-3 space-y-2">
-          {type === "steplr" && (
-            <>
-              <div>
-                <label className="text-xs">Step Size</label>
-                <Input
-                  className="text-gray-800"
-                  size="sm"
-                  type="number"
-                  value={params.step_size?.toString()}
-                  onChange={(e) =>
-                    updateParam("step_size", parseInt(e.target.value))
-                  }
-                />
-              </div>
-              <div>
-                <label className="text-xs">Gamma</label>
-                <Input
-                  className="text-gray-800"
-                  size="sm"
-                  step="0.01"
-                  type="number"
-                  value={params.gamma?.toString()}
-                  onChange={(e) =>
-                    updateParam("gamma", parseFloat(e.target.value))
-                  }
-                />
-              </div>
-            </>
-          )}
-
-          {type === "exponentiallr" && (
-            <div>
-              <label className="text-xs">Gamma</label>
-              <Input
-                className="text-gray-800"
-                size="sm"
-                step="0.01"
-                type="number"
-                value={params.gamma?.toString()}
-                onChange={(e) =>
-                  updateParam("gamma", parseFloat(e.target.value))
-                }
-              />
+      <Modal isOpen={showModal} onClose={() => setShowModal(false)}>
+        <ModalContent>
+          <ModalHeader>Configure Scheduler</ModalHeader>
+          <ModalBody>
+            <div className="flex flex-col gap-2">
+              {type === "steplr" && (
+                <>
+                  <label className="text-xs">Step Size</label>
+                  <Input
+                    className="text-gray-800"
+                    size="sm"
+                    type="number"
+                    value={params.step_size?.toString()}
+                    onChange={(e) => updateParam("step_size", parseInt(e.target.value))}
+                  />
+                  <label className="text-xs">Gamma</label>
+                  <Input
+                    className="text-gray-800"
+                    size="sm"
+                    step="0.01"
+                    type="number"
+                    value={params.gamma?.toString()}
+                    onChange={(e) => updateParam("gamma", parseFloat(e.target.value))}
+                  />
+                </>
+              )}
+              {type === "exponentiallr" && (
+                <>
+                  <label className="text-xs">Gamma</label>
+                  <Input
+                    className="text-gray-800"
+                    size="sm"
+                    step="0.01"
+                    type="number"
+                    value={params.gamma?.toString()}
+                    onChange={(e) => updateParam("gamma", parseFloat(e.target.value))}
+                  />
+                </>
+              )}
+              {type === "cosineannealinglr" && (
+                <>
+                  <label className="text-xs">T Max</label>
+                  <Input
+                    className="text-gray-800"
+                    size="sm"
+                    type="number"
+                    value={params.T_max?.toString()}
+                    onChange={(e) => updateParam("T_max", parseInt(e.target.value))}
+                  />
+                </>
+              )}
+              {type === "reducelronplateau" && (
+                <>
+                  <label className="text-xs">Factor</label>
+                  <Input
+                    className="text-gray-800"
+                    size="sm"
+                    step="0.01"
+                    type="number"
+                    value={params.factor?.toString()}
+                    onChange={(e) => updateParam("factor", parseFloat(e.target.value))}
+                  />
+                  <label className="text-xs">Patience</label>
+                  <Input
+                    className="text-gray-800"
+                    size="sm"
+                    type="number"
+                    value={params.patience?.toString()}
+                    onChange={(e) => updateParam("patience", parseInt(e.target.value))}
+                  />
+                </>
+              )}
             </div>
-          )}
-
-          {type === "cosineannealinglr" && (
-            <div>
-              <label className="text-xs">T Max</label>
-              <Input
-                className="text-gray-800"
-                size="sm"
-                type="number"
-                value={params.T_max?.toString()}
-                onChange={(e) => updateParam("T_max", parseInt(e.target.value))}
-              />
-            </div>
-          )}
-
-          {type === "reducelronplateau" && (
-            <>
-              <div>
-                <label className="text-xs">Factor</label>
-                <Input
-                  className="text-gray-800"
-                  size="sm"
-                  step="0.01"
-                  type="number"
-                  value={params.factor?.toString()}
-                  onChange={(e) =>
-                    updateParam("factor", parseFloat(e.target.value))
-                  }
-                />
-              </div>
-              <div>
-                <label className="text-xs">Patience</label>
-                <Input
-                  className="text-gray-800"
-                  size="sm"
-                  type="number"
-                  value={params.patience?.toString()}
-                  onChange={(e) =>
-                    updateParam("patience", parseInt(e.target.value))
-                  }
-                />
-              </div>
-            </>
-          )}
-        </div>
-      )}
-
-      <Handle
-        className={nodeStyles.handle}
-        isConnectable={isConnectable}
-        position={Position.Right}
-        type="source"
-      />
-    </div>
+          </ModalBody>
+          <ModalFooter>
+            <button className="px-4 py-1 rounded bg-yellow-500 text-white" onClick={() => setShowModal(false)}>Close</button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+    </>
   );
 };
 
@@ -1615,15 +1652,12 @@ export const nodeTypes = {
   database_config: memo((props: NodeProps) => <DatabaseConfigNode {...props} />),
   dataset: memo((props: NodeProps) => <DatasetNode {...props} />),
   graphNode: memo((props: NodeProps) => <GraphNode {...props} />),
-  inputLayer: memo((props: NodeProps) => <InputLayer {...props} />),
-  outputLayer: memo((props: NodeProps) => <OutputLayer {...props} />),
+  neuralLayer: memo((props: NodeProps) => <NeuralLayerNode {...props} />),
   textInput: memo((props: NodeProps) => <TextInput {...props} />),
   textOutput: memo((props: NodeProps) => <TextOutput {...props} />),
-  hidden: memo((props: NodeProps) => <HiddenLayer {...props} />),
-  dense: memo((props: NodeProps) => <BaseNode {...props} />),
   conv2d: memo((props: NodeProps) => <BaseNode {...props} />),
   maxpool: memo((props: NodeProps) => <BaseNode {...props} />),
-  dropout: memo((props: NodeProps) => <BaseNode {...props} />),
+  dropout: memo((props: NodeProps) => <DropoutNode {...props} />),
   activation: memo((props: NodeProps) => <BaseNode {...props} />),
   lstm: memo((props: NodeProps) => <BaseNode {...props} />),
   concat: memo((props: NodeProps) => <BaseNode {...props} />),
