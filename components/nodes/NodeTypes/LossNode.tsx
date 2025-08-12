@@ -1,9 +1,27 @@
 import React, { useState } from 'react';
 import clsx from 'clsx';
 import { Handle, Position, NodeProps } from 'reactflow';
+import { Icon } from '@iconify/react';
+import { Input, Modal, ModalBody, ModalContent, ModalFooter, ModalHeader } from '@heroui/react';
 
-const LossNode = ({ data, type, selected, isConnectable }: NodeProps) => {
-  const [params, setParams] = useState(data.params || {});
+const LossNode = ({ data, selected, isConnectable }: NodeProps) => {
+  const lossType = data.lossType || data.type || "crossentropy";
+  const [showModal, setShowModal] = useState(false);
+  const getLossDefaults = () => {
+    switch (lossType) {
+      case "crossentropy":
+        return { reduction: "mean" };
+      case "mse":
+        return { reduction: "mean" };
+      case "mae":
+        return { reduction: "mean" };
+      case "bce":
+        return { reduction: "mean", pos_weight: 1.0 };
+      default:
+        return {};
+    }
+  };
+  const [params, setParams] = useState(data.params || getLossDefaults());
   const updateParam = (key: string, value: any) => {
     const newParams = { ...params, [key]: value };
     setParams(newParams);
@@ -11,7 +29,6 @@ const LossNode = ({ data, type, selected, isConnectable }: NodeProps) => {
       data.onParamsChange(newParams);
     }
   };
-  const [showModal, setShowModal] = useState(false);
   return (
     <>
       <div
@@ -22,16 +39,13 @@ const LossNode = ({ data, type, selected, isConnectable }: NodeProps) => {
         )}
         onDoubleClick={() => setShowModal(true)}
       >
-        <Handle
-          className="handle"
-          isConnectable={isConnectable}
-          position={Position.Left}
-          type="target"
-        />
-        <div className="flex items-center gap-2 mb-2">
-          {/* Icon and label omitted for brevity */}
+        <div className="flex flex-col p-3">
+          <div className="flex items-center gap-2">
+            {data.icon && <Icon className="w-5 h-5" icon={data.icon} />}
+            <span className="font-medium capitalize">{lossType} Loss</span>
+          </div>
+          <div className="text-xs mt-2 opacity-70">Double-click to configure</div>
         </div>
-        <div className="text-xs">Double-click to configure</div>
         <Handle
           className="handle"
           isConnectable={isConnectable}
@@ -39,7 +53,40 @@ const LossNode = ({ data, type, selected, isConnectable }: NodeProps) => {
           type="source"
         />
       </div>
-      {/* Modal code omitted for brevity */}
+      <Modal isOpen={showModal} onClose={() => setShowModal(false)}>
+        <ModalContent>
+          <ModalHeader>Configure Loss</ModalHeader>
+          <ModalBody>
+            <div className="flex flex-col gap-2">
+              <div className="text-xs font-semibold opacity-90">Parameters:</div>
+              <label className="text-xs">Reduction</label>
+              <Input
+                className="text-gray-800"
+                size="sm"
+                type="text"
+                value={params.reduction?.toString()}
+                onChange={(e) => updateParam("reduction", e.target.value)}
+              />
+              {lossType === "bce" && (
+                <>
+                  <label className="text-xs">Pos Weight</label>
+                  <Input
+                    className="text-gray-800"
+                    size="sm"
+                    step="0.01"
+                    type="number"
+                    value={params.pos_weight?.toString()}
+                    onChange={(e) => updateParam("pos_weight", parseFloat(e.target.value))}
+                  />
+                </>
+              )}
+            </div>
+          </ModalBody>
+          <ModalFooter>
+            <button className="px-4 py-1 rounded bg-red-600 text-white" onClick={() => setShowModal(false)}>Close</button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
     </>
   );
 };

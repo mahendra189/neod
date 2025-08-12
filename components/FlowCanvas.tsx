@@ -362,16 +362,20 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
         y: event.clientY - reactFlowBounds.top,
       });
 
-      // Special handling for optimizer and scheduler nodes
+      // Special handling for optimizer, scheduler, and loss nodes
       let nodeType = nodeData.type;
       let optimizerType = nodeData.optimizerType;
       let schedulerType = nodeData.schedulerType;
+      let lossType = nodeData.lossType;
       if (["adam", "sgd", "rmsprop", "adagrad", "adamw"].includes(nodeData.type)) {
         nodeType = "optimizer";
         optimizerType = nodeData.type;
       } else if (["steplr", "exponentiallr", "cosineannealinglr", "reducelronplateau"].includes(nodeData.type)) {
         nodeType = "scheduler";
         schedulerType = nodeData.type;
+      } else if (["crossentropy", "mse", "mae", "bce"].includes(nodeData.type)) {
+        nodeType = "loss";
+        lossType = nodeData.type;
       }
       const newNode: Node = {
         id: Date.now().toString(),
@@ -402,6 +406,25 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
           } : {}),
           ...(schedulerType ? {
             schedulerType,
+            params: nodeData.params || {},
+            onParamsChange: (newParams: any) => {
+              setNodes((nds) =>
+                nds.map((node) =>
+                  node.id === newNode.id
+                    ? {
+                      ...node,
+                      data: {
+                        ...node.data,
+                        params: newParams,
+                      },
+                    }
+                    : node,
+                ),
+              );
+            },
+          } : {}),
+          ...(lossType ? {
+            lossType,
             params: nodeData.params || {},
             onParamsChange: (newParams: any) => {
               setNodes((nds) =>
