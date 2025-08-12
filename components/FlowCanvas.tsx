@@ -877,7 +877,7 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
               />
             );
           },
-          database_config: (props: any) => {
+          databaseConfig: (props: any) => {
             // Find incoming edge from dataset node
             const incoming = edges.find(e => e.target === props.id && nodes.find(n => n.id === e.source && n.type === 'dataset'));
             let xColumns: string[] = [];
@@ -885,15 +885,17 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
             if (incoming) {
               const datasetNodeId = incoming.source;
               const dsState = datasetNodeState[datasetNodeId];
-              if (dsState && dsState.dataset === 'csv' && Array.isArray(dsState.columns)) {
-                xColumns = dsState.columns;
-                yColumns = dsState.columns;
-              } else if (dsState && dsState.dataset === 'mnist') {
-                xColumns = Array.from({ length: 784 }, (_, i) => `pixel${i}`);
-                yColumns = ['digit'];
-              } else if (dsState && dsState.dataset === 'iris') {
-                xColumns = ['sepalLength', 'sepalWidth', 'petalLength', 'petalWidth'];
-                yColumns = ['species'];
+              if (dsState) {
+                if (dsState.dataset === 'csv' && Array.isArray(dsState.columns)) {
+                  xColumns = dsState.columns;
+                  yColumns = dsState.columns;
+                } else if (dsState.dataset === 'mnist') {
+                  xColumns = Array.from({ length: 784 }, (_, i) => `pixel${i}`);
+                  yColumns = ['digit'];
+                } else if (dsState.dataset === 'iris') {
+                  xColumns = ['sepalLength', 'sepalWidth', 'petalLength', 'petalWidth'];
+                  yColumns = ['species'];
+                }
               }
             }
             const DatabaseConfigNode = nodeTypes.databaseConfig.type || nodeTypes.databaseConfig;

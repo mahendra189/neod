@@ -6,10 +6,24 @@ import { Icon } from '@iconify/react';
 
 const DatasetNode = ({ data, type, selected, isConnectable }: NodeProps) => {
   const dataset = data.dataset || 'mnist';
-  const setDataset = typeof data.onDatasetChange === 'function' ? data.onDatasetChange : () => {};
+  const setDataset = (value: string) => {
+    if (typeof data.onDatasetChange === 'function') {
+      data.onDatasetChange(value);
+    }
+    // Pass dataset to downstream nodes if callback exists
+    if (typeof data.onDataPass === 'function') {
+      data.onDataPass({ dataset: value });
+    }
+  };
   const handleCsv = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0] && typeof data.onCsvUpload === 'function') {
-      data.onCsvUpload(e.target.files[0]);
+    if (e.target.files && e.target.files[0]) {
+      if (typeof data.onCsvUpload === 'function') {
+        data.onCsvUpload(e.target.files[0]);
+      }
+      // Pass file to downstream nodes if callback exists
+      if (typeof data.onDataPass === 'function') {
+        data.onDataPass({ dataset: 'csv', file: e.target.files[0] });
+      }
     }
   };
   return (

@@ -1,8 +1,6 @@
 import React, { useState, useEffect, memo } from 'react';
 import clsx from 'clsx';
 import { Handle, Position } from 'reactflow';
-import nodeStyles from '../nodeStyles';
-// import { Icon } from '../icons'; // Commented out, fix or remove as needed
 
 import { NodeProps } from 'reactflow';
 const NeuralLayerNode = ({ data, type, selected, isConnectable }: NodeProps) => {
