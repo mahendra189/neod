@@ -9,20 +9,22 @@ const nodeTypesByCategory = [
   {
     category: "Input/Output",
     nodes: [
-      { type: "inputOutput", label: "Input/Output", icon: "lucide:box", details: "Input or Output Node", keywords: ["input", "output", "io", "layer"], popularity: 99 },
       { type: "textInput", label: "Text Input", icon: "lucide:type", details: "Text Input Node", keywords: ["text", "input", "string"], popularity: 80 },
       { type: "textOutput", label: "Text Output", icon: "lucide:file-text", details: "Text Output Node", keywords: ["text", "output", "result"], popularity: 70 },
+    ]
+  }
+  ,
+  {
+    category: "Dataset",
+    nodes: [
       { type: "dataset", label: "Dataset", icon: "lucide:database", details: "Dataset Node", keywords: ["dataset", "data", "csv"], popularity: 90 },
-      { type: "graph", label: "Graph", icon: "lucide:activity", details: "Graph Node", keywords: ["graph", "metrics", "visualize"], popularity: 85 },
     ],
   },
+
   {
     category: "Core Layers",
     nodes: [
       { type: "neuralLayer", label: "Neural Layer", icon: "lucide:grid", details: "Neural Network Layer", keywords: ["neural", "layer", "dense", "hidden"], popularity: 99 },
-      { type: "denseHidden", label: "Dense/Hidden", icon: "lucide:layers", details: "Dense/Hidden Layer", keywords: ["dense", "hidden", "layer"], popularity: 90 },
-      { type: "base", label: "Base Node", icon: "lucide:square", details: "Base Node", keywords: ["base", "node"], popularity: 60 },
-      { type: "dropout", label: "Dropout", icon: "lucide:cloud-rain", details: "Dropout Layer", keywords: ["dropout", "regularization"], popularity: 80 },
     ],
   },
   {
@@ -37,42 +39,42 @@ const nodeTypesByCategory = [
   {
     category: "Optimizers",
     nodes: [
-  { type: "adam", label: "Adam", icon: "lucide:zap", details: "Adam Optimizer", keywords: ["adam", "optimizer", "adaptive", "momentum"], popularity: 90, params: { lr: 0.001, beta1: 0.9, beta2: 0.999, eps: 1e-8 } },
-  { type: "sgd", label: "SGD", icon: "lucide:trending-up", details: "Stochastic Gradient Descent", keywords: ["sgd", "gradient", "descent", "stochastic"], popularity: 80, params: { lr: 0.01, momentum: 0.9, dampening: 0, weight_decay: 0 } },
-  { type: "rmsprop", label: "RMSprop", icon: "lucide:activity", details: "RMSprop Optimizer", keywords: ["rmsprop", "optimizer", "root", "mean", "square"], popularity: 70, params: { lr: 0.01, alpha: 0.99, eps: 1e-8, weight_decay: 0 } },
-  { type: "adagrad", label: "AdaGrad", icon: "lucide:target", details: "Adaptive Gradient Algorithm", keywords: ["adagrad", "adaptive", "gradient", "learning", "rate"], popularity: 60, params: { lr: 0.01, lr_decay: 0, weight_decay: 0, eps: 1e-10 } },
-  { type: "adamw", label: "AdamW", icon: "lucide:zap", details: "Adam with Weight Decay", keywords: ["adamw", "adam", "weight", "decay", "regularization"], popularity: 75, params: { lr: 0.001, beta1: 0.9, beta2: 0.999, eps: 1e-8, weight_decay: 0.01 } },
+      { type: "adam", label: "Adam", icon: "lucide:zap", details: "Adam Optimizer", keywords: ["adam", "optimizer", "adaptive", "momentum"], popularity: 90, params: { lr: 0.001, beta1: 0.9, beta2: 0.999, eps: 1e-8 } },
+      { type: "sgd", label: "SGD", icon: "lucide:trending-up", details: "Stochastic Gradient Descent", keywords: ["sgd", "gradient", "descent", "stochastic"], popularity: 80, params: { lr: 0.01, momentum: 0.9, dampening: 0, weight_decay: 0 } },
+      { type: "rmsprop", label: "RMSprop", icon: "lucide:activity", details: "RMSprop Optimizer", keywords: ["rmsprop", "optimizer", "root", "mean", "square"], popularity: 70, params: { lr: 0.01, alpha: 0.99, eps: 1e-8, weight_decay: 0 } },
+      { type: "adagrad", label: "AdaGrad", icon: "lucide:target", details: "Adaptive Gradient Algorithm", keywords: ["adagrad", "adaptive", "gradient", "learning", "rate"], popularity: 60, params: { lr: 0.01, lr_decay: 0, weight_decay: 0, eps: 1e-10 } },
+      { type: "adamw", label: "AdamW", icon: "lucide:zap", details: "Adam with Weight Decay", keywords: ["adamw", "adam", "weight", "decay", "regularization"], popularity: 75, params: { lr: 0.001, beta1: 0.9, beta2: 0.999, eps: 1e-8, weight_decay: 0.01 } },
     ],
   },
   {
     category: "Algorithms",
     nodes: [
-  { type: "cnn", label: "CNN", icon: "lucide:image", details: "Convolutional Neural Network", keywords: ["cnn", "convolutional", "vision", "image"], popularity: 85, params: { layers: 3, filters: [32, 64, 128], kernel_size: 3, pool_size: 2 } },
-  { type: "rnn", label: "RNN", icon: "lucide:repeat", details: "Recurrent Neural Network", keywords: ["rnn", "recurrent", "sequence", "temporal"], popularity: 70, params: { hidden_size: 128, num_layers: 2, bidirectional: false } },
-  { type: "lstm", label: "LSTM", icon: "lucide:repeat-2", details: "Long Short-Term Memory", keywords: ["lstm", "memory", "sequence", "temporal"], popularity: 65, params: { hidden_size: 128, num_layers: 2, dropout: 0.2, bidirectional: false } },
-  { type: "transformer", label: "Transformer", icon: "lucide:cpu", details: "Transformer Architecture", keywords: ["transformer", "attention", "bert", "gpt", "nlp"], popularity: 95, params: { d_model: 512, nhead: 8, num_layers: 6, dim_feedforward: 2048, dropout: 0.1 } },
-  { type: "autoencoder", label: "AutoEncoder", icon: "lucide:compress", details: "Autoencoder Network", keywords: ["autoencoder", "encoder", "decoder", "compression"], popularity: 65, params: { encoding_dim: 128, layers: [512, 256, 128], activation: "relu" } },
-  { type: "gan", label: "GAN", icon: "lucide:shuffle", details: "Generative Adversarial Network", keywords: ["gan", "generative", "adversarial", "generate"], popularity: 70, params: { latent_dim: 100, generator_layers: [256, 512, 1024], discriminator_layers: [1024, 512, 256] } },
-  { type: "resnet", label: "ResNet", icon: "lucide:layers-2", details: "Residual Network", keywords: ["resnet", "residual", "skip", "connection", "deep"], popularity: 80, params: { depth: 50, num_classes: 1000, block_type: "bottleneck" } },
-  { type: "vae", label: "VAE", icon: "lucide:shuffle", details: "Variational Autoencoder", keywords: ["vae", "variational", "autoencoder", "latent"], popularity: 60, params: { latent_dim: 64, encoder_layers: [512, 256], decoder_layers: [256, 512] } },
+      { type: "cnn", label: "CNN", icon: "lucide:image", details: "Convolutional Neural Network", keywords: ["cnn", "convolutional", "vision", "image"], popularity: 85, params: { layers: 3, filters: [32, 64, 128], kernel_size: 3, pool_size: 2 } },
+      { type: "rnn", label: "RNN", icon: "lucide:repeat", details: "Recurrent Neural Network", keywords: ["rnn", "recurrent", "sequence", "temporal"], popularity: 70, params: { hidden_size: 128, num_layers: 2, bidirectional: false } },
+      { type: "lstm", label: "LSTM", icon: "lucide:repeat-2", details: "Long Short-Term Memory", keywords: ["lstm", "memory", "sequence", "temporal"], popularity: 65, params: { hidden_size: 128, num_layers: 2, dropout: 0.2, bidirectional: false } },
+      { type: "transformer", label: "Transformer", icon: "lucide:cpu", details: "Transformer Architecture", keywords: ["transformer", "attention", "bert", "gpt", "nlp"], popularity: 95, params: { d_model: 512, nhead: 8, num_layers: 6, dim_feedforward: 2048, dropout: 0.1 } },
+      { type: "autoencoder", label: "AutoEncoder", icon: "lucide:workflow", details: "Autoencoder Network", keywords: ["autoencoder", "encoder", "decoder", "compression"], popularity: 65, params: { encoding_dim: 128, layers: [512, 256, 128], activation: "relu" } },
+      { type: "gan", label: "GAN", icon: "lucide:shuffle", details: "Generative Adversarial Network", keywords: ["gan", "generative", "adversarial", "generate"], popularity: 70, params: { latent_dim: 100, generator_layers: [256, 512, 1024], discriminator_layers: [1024, 512, 256] } },
+      { type: "resnet", label: "ResNet", icon: "lucide:layers-2", details: "Residual Network", keywords: ["resnet", "residual", "skip", "connection", "deep"], popularity: 80, params: { depth: 50, num_classes: 1000, block_type: "bottleneck" } },
+      { type: "vae", label: "VAE", icon: "lucide:shuffle", details: "Variational Autoencoder", keywords: ["vae", "variational", "autoencoder", "latent"], popularity: 60, params: { latent_dim: 64, encoder_layers: [512, 256], decoder_layers: [256, 512] } },
     ],
   },
   {
     category: "Loss Functions",
     nodes: [
-  { type: "crossentropy", label: "CrossEntropy", icon: "lucide:target", details: "Cross Entropy Loss", keywords: ["crossentropy", "loss", "classification", "entropy"], popularity: 90, params: {} },
-  { type: "mse", label: "MSE", icon: "lucide:square", details: "Mean Squared Error", keywords: ["mse", "mean", "squared", "error", "regression"], popularity: 85, params: {} },
-  { type: "mae", label: "MAE", icon: "lucide:triangle", details: "Mean Absolute Error", keywords: ["mae", "mean", "absolute", "error", "regression"], popularity: 70, params: {} },
-  { type: "bce", label: "BCE", icon: "lucide:binary", details: "Binary Cross Entropy", keywords: ["bce", "binary", "cross", "entropy", "sigmoid"], popularity: 80, params: {} },
+      { type: "crossentropy", label: "CrossEntropy", icon: "lucide:target", details: "Cross Entropy Loss", keywords: ["crossentropy", "loss", "classification", "entropy"], popularity: 90, params: {} },
+      { type: "mse", label: "MSE", icon: "lucide:square", details: "Mean Squared Error", keywords: ["mse", "mean", "squared", "error", "regression"], popularity: 85, params: {} },
+      { type: "mae", label: "MAE", icon: "lucide:triangle", details: "Mean Absolute Error", keywords: ["mae", "mean", "absolute", "error", "regression"], popularity: 70, params: {} },
+      { type: "bce", label: "BCE", icon: "lucide:binary", details: "Binary Cross Entropy", keywords: ["bce", "binary", "cross", "entropy", "sigmoid"], popularity: 80, params: {} },
     ],
   },
   {
     category: "Schedulers",
     nodes: [
-  { type: "steplr", label: "StepLR", icon: "lucide:stairs", details: "Step Learning Rate Scheduler", keywords: ["steplr", "step", "learning", "rate", "scheduler"], popularity: 70, params: { step_size: 30, gamma: 0.1 } },
-  { type: "exponentiallr", label: "ExponentialLR", icon: "lucide:trending-down", details: "Exponential LR Decay", keywords: ["exponential", "decay", "learning", "rate"], popularity: 60, params: { gamma: 0.95 } },
-  { type: "cosineannealinglr", label: "CosineAnnealingLR", icon: "lucide:waves", details: "Cosine Annealing LR", keywords: ["cosine", "annealing", "learning", "rate", "warm"], popularity: 75, params: { T_max: 50, eta_min: 0 } },
-  { type: "reducelronplateau", label: "ReduceLROnPlateau", icon: "lucide:trending-down", details: "Reduce LR on Plateau", keywords: ["reduce", "plateau", "learning", "rate", "adaptive"], popularity: 80, params: { mode: "min", factor: 0.1, patience: 10, threshold: 1e-4 } },
+      { type: "steplr", label: "StepLR", icon: "lucide:network", details: "Step Learning Rate Scheduler", keywords: ["steplr", "step", "learning", "rate", "scheduler"], popularity: 70, params: { step_size: 30, gamma: 0.1 } },
+      { type: "exponentiallr", label: "ExponentialLR", icon: "lucide:trending-down", details: "Exponential LR Decay", keywords: ["exponential", "decay", "learning", "rate"], popularity: 60, params: { gamma: 0.95 } },
+      { type: "cosineannealinglr", label: "CosineAnnealingLR", icon: "lucide:waves", details: "Cosine Annealing LR", keywords: ["cosine", "annealing", "learning", "rate", "warm"], popularity: 75, params: { T_max: 50, eta_min: 0 } },
+      { type: "reducelronplateau", label: "ReduceLROnPlateau", icon: "lucide:trending-down", details: "Reduce LR on Plateau", keywords: ["reduce", "plateau", "learning", "rate", "adaptive"], popularity: 80, params: { mode: "min", factor: 0.1, patience: 10, threshold: 1e-4 } },
     ],
   }
 ];
