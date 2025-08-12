@@ -47,12 +47,6 @@ const OptimizerNode = ({ data, selected, isConnectable }: NodeProps) => {
         )}
         onDoubleClick={() => setShowModal(true)}
       >
-        <Handle
-          className="handle"
-          isConnectable={isConnectable}
-          position={Position.Left}
-          type="target"
-        />
         <div className="flex flex-col p-3">
           <div className="flex items-center gap-2">
             <Icon className="w-5 h-5" icon={data.icon} />
