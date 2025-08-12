@@ -102,7 +102,7 @@ const NeuralLayerNode = ({ data, type, selected, isConnectable }: NodeProps) => 
         </span>
       </div>
     );
-    if (i < activations.length) {
+    if (i < activations.length && activations[i] !== 'none') {
       const actLabel = activationOptions.find(opt => opt.value === activations[i])?.label || activations[i];
       stackedSummary.push(
         <div key={`act-${i}`} className="flex items-center gap-1">
