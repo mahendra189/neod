@@ -245,7 +245,7 @@ const NeuralLayerNode = ({ data, type, selected, isConnectable }: NodeProps) => 
                     neuronGap: number,
                     visHeight: number
                   ): { y: number; type: 'neuron' | 'dots' }[] {
-                    if (count <= 10) {
+                    if (count <= 8) {
                       const totalHeight = (count - 1) * neuronGap;
                       return Array.from({ length: count }, (_, i) => ({
                         y: visHeight / 2 - totalHeight / 2 + i * neuronGap,
