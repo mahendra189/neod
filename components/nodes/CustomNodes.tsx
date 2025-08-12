@@ -1,6 +1,7 @@
 import NeuralLayerNode from './NodeTypes/NeuralLayerNode';
 import DatabaseConfigNode from './NodeTypes/DatabaseConfigNode';
 import DatasetNode from './NodeTypes/DatasetNode';
+import DataPreprocessingNode from './NodeTypes/DataPreprocessingNode';
 import BaseNode from './NodeTypes/BaseNode';
 import DropoutNode from './NodeTypes/DropoutNode';
 import InputOutputNode from './NodeTypes/InputOutputNode';
@@ -20,6 +21,7 @@ const nodeTypes = {
   neuralLayer: NeuralLayerNode,
   databaseConfig: DatabaseConfigNode,
   dataset: DatasetNode,
+  dataPreprocessing: DataPreprocessingNode,
   base: BaseNode,
   dropout: DropoutNode,
   inputOutput: InputOutputNode,

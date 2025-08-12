@@ -14,12 +14,28 @@ const DatabaseConfigNode = ({ data, type, selected, isConnectable }: NodeProps) 
 
     const handleXChange = (values: string[]) => {
         setSelectedX(values);
-        data.onChange?.({ selectedX: values });
+        data.onChange?.({ 
+            selectedX: values,
+            outputX: {
+                columns: values,
+                trainSplit: data.trainSplit ?? 0.8,
+                shuffle: data.shuffle ?? true,
+                stratify: data.stratify ?? false
+            }
+        });
     };
 
     const handleYChange = (values: string[]) => {
         setSelectedY(values);
-        data.onChange?.({ selectedY: values });
+        data.onChange?.({ 
+            selectedY: values,
+            outputY: {
+                columns: values,
+                trainSplit: data.trainSplit ?? 0.8,
+                shuffle: data.shuffle ?? true,
+                stratify: data.stratify ?? false
+            }
+        });
     };
 
     // Only show minimal info on node
@@ -152,9 +168,12 @@ const DatabaseConfigNode = ({ data, type, selected, isConnectable }: NodeProps) 
                                     min={0}
                                     max={1}
                                     step={0.01}
-                                    value={data.trainSplit ?? 0.50}
-                                    onChange={e => data.onChange?.({ trainSplit: parseFloat(e.target.value) })}
-                                    className="w-full text-xs"
+                                    value={data.trainSplit ?? 0.8}
+                                    onChange={e => {
+                                        const value = Math.min(1, Math.max(0, parseFloat(e.target.value)));
+                                        data.onChange?.({ trainSplit: value });
+                                    }}
+                                    className="w-full text-xs p-1 rounded border border-emerald-300"
                                 />
                             </div>
                             <div className="flex flex-col justify-end">

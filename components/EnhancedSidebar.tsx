@@ -29,6 +29,7 @@ const nodeTypesByCategory = [
     category: "Config & Training",
     nodes: [
       { type: "databaseConfig", label: "Database Config", icon: "lucide:settings", details: "Database Config Node", keywords: ["database", "config", "preprocess"], popularity: 80 },
+      { type: "dataPreprocessing", label: "Preprocessing", icon: "lucide:git-branch", details: "Data Preprocessing & Transformation", keywords: ["preprocessing", "scaling", "normalize", "encode", "transform"], popularity: 85 },
       { type: "trainingConfig", label: "Training Config", icon: "lucide:settings", details: "Training Configuration Hub", keywords: ["training", "config", "parameters"], popularity: 70 },
       { type: "metrics", label: "Metrics", icon: "lucide:bar-chart-3", details: "Training Metrics", keywords: ["metrics", "accuracy", "loss"], popularity: 70 },
     ],
