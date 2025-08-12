@@ -362,14 +362,40 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
         y: event.clientY - reactFlowBounds.top,
       });
 
+      // Special handling for optimizer nodes: always use type 'optimizer' and pass optimizerType
+      let nodeType = nodeData.type;
+      let optimizerType = nodeData.optimizerType;
+      if (["adam", "sgd", "rmsprop", "adagrad", "adamw"].includes(nodeData.type)) {
+        nodeType = "optimizer";
+        optimizerType = nodeData.type;
+      }
       const newNode: Node = {
         id: Date.now().toString(),
-        type: nodeData.type,
+        type: nodeType,
         position,
         data: {
           label: nodeData.label,
           icon: nodeData.icon,
           details: nodeData.details,
+          ...(optimizerType ? {
+            optimizerType,
+            params: nodeData.params || {},
+            onParamsChange: (newParams: any) => {
+              setNodes((nds) =>
+                nds.map((node) =>
+                  node.id === newNode.id
+                    ? {
+                      ...node,
+                      data: {
+                        ...node.data,
+                        params: newParams,
+                      },
+                    }
+                    : node,
+                ),
+              );
+            },
+          } : {}),
           ...([
             "inputLayer",
             "outputLayer",
@@ -377,16 +403,16 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
             "dense",
             "embedding",
             "lstm",
-          ].includes(nodeData.type)
+          ].includes(nodeType)
             ? {
               count:
-                nodeData.type === "inputLayer"
+                nodeType === "inputLayer"
                   ? 784
-                  : nodeData.type === "outputLayer"
+                  : nodeType === "outputLayer"
                     ? 1
-                    : nodeData.type === "embedding"
+                    : nodeType === "embedding"
                       ? 64
-                      : nodeData.type === "lstm"
+                      : nodeType === "lstm"
                         ? 128
                         : 128,
               onChange: (newCount: number) => {
@@ -407,7 +433,7 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
             }
             : {}),
           // Add text value handling for text input nodes
-          ...(nodeData.type === "textInput"
+          ...(nodeType === "textInput"
             ? {
               value: "Enter name...",
               onChange: (newValue: string) => {
@@ -427,7 +453,7 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
               },
             }
             : {}),
-          // Add parameter handling for algorithm, optimizer, loss, and scheduler nodes
+          // Add parameter handling for algorithm, loss, and scheduler nodes
           ...([
             "cnn",
             "rnn",
@@ -437,11 +463,6 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
             "gan",
             "resnet",
             "vae",
-            "adam",
-            "sgd",
-            "rmsprop",
-            "adagrad",
-            "adamw",
             "crossentropy",
             "mse",
             "mae",
@@ -450,7 +471,7 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
             "exponentiallr",
             "cosineannealinglr",
             "reducelronplateau",
-          ].includes(nodeData.type)
+          ].includes(nodeType)
             ? {
               params: {},
               onParamsChange: (newParams: any) => {
@@ -471,7 +492,7 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
             }
             : {}),
           // Add configuration handling for training config nodes
-          ...(nodeData.type === "training_config"
+          ...(nodeType === "training_config"
             ? {
               config: {
                 epochs: 10,
@@ -498,7 +519,7 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
             }
             : {}),
           // Add metrics handling for metrics nodes
-          ...(nodeData.type === "metrics"
+          ...(nodeType === "metrics"
             ? {
               metrics: {
                 accuracy: 0.0,

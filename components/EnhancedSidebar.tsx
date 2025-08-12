@@ -169,7 +169,20 @@ const EnhancedSidebar: React.FC<EnhancedSidebarProps> = ({ onNodeAdd }) => {
   }, [filteredNodes]);
 
   const onDragStart = (event: React.DragEvent, node: (typeof allNodes)[0]) => {
-    event.dataTransfer.setData("application/reactflow", JSON.stringify(node));
+    // If optimizer node, always use type 'optimizer' and pass optimizerType in data
+    // For optimizer nodes, pass optimizerType only in drag data, not in sidebar node object
+    let dragNode = node;
+    if (["adam", "sgd", "rmsprop", "adagrad", "adamw"].includes(node.type)) {
+      dragNode = {
+        ...node,
+        type: "optimizer",
+        optimizerType: node.type,
+      } as any; // Cast to any to avoid type error, only for drag data
+      onNodeAdd?.(node.type); // Call with original type for sidebar logic
+    } else {
+      onNodeAdd?.(dragNode.type);
+    }
+    event.dataTransfer.setData("application/reactflow", JSON.stringify(dragNode));
     event.dataTransfer.effectAllowed = "move";
 
     // Add to recently used
@@ -182,7 +195,7 @@ const EnhancedSidebar: React.FC<EnhancedSidebarProps> = ({ onNodeAdd }) => {
       return updated;
     });
 
-    onNodeAdd?.(node.type);
+    onNodeAdd?.(dragNode.type);
   };
 
   const toggleFavorite = (nodeType: string) => {
