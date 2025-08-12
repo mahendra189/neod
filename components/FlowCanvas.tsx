@@ -47,29 +47,6 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
   // Default simple text processing network
   const getDefaultNodes = (): Node[] => [
     {
-      id: "input-1",
-      type: "textInput",
-      data: {
-        label: "Text Input",
-        icon: "lucide:type",
-        details: "Enter text here",
-        value: "Hello World",
-        onChange: (newValue: string) => {
-          setNodes((nds) =>
-            nds.map((node) =>
-              node.id === "input-1"
-                ? {
-                    ...node,
-                    data: { ...node.data, value: newValue },
-                  }
-                : node,
-            ),
-          );
-        },
-      },
-      position: { x: 50, y: 200 },
-    },
-    {
       id: "inputlayer-1",
       type: "inputLayer",
       data: {
@@ -578,28 +555,20 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
   // Inline model analysis logic for instant feedback
   useEffect(() => {
     // --- ModelValidator logic (robust) ---
-    const inputNodes = nodes.filter((n: Node) => n.type === "inputLayer" || n.type === "textInput");
-    const outputNodes = nodes.filter((n: Node) => n.type === "outputLayer");
+    // Support neuralLayer stack node as unified input/output
+    const neuralLayerNodes = nodes.filter((n: Node) => n.type === "neuralLayer");
     const denseNodes = nodes.filter((n: Node) => n.type === "dense");
     const dropoutNodes = nodes.filter((n: Node) => n.type === "dropout");
     const convNodes = nodes.filter((n: Node) => n.type === "conv2d");
     const trainingConfigNodes = nodes.filter((n: Node) => n.type === "training_config");
     const issues: any[] = [];
     // Validation checks
-    if (inputNodes.length === 0) {
+    if (neuralLayerNodes.length === 0) {
       issues.push({
-        id: "no-input",
+        id: "no-neurallayer",
         type: "error",
-        title: "No Input Layer",
-        description: "Your model needs at least one input layer to receive data.",
-      });
-    }
-    if (outputNodes.length === 0) {
-      issues.push({
-        id: "no-output",
-        type: "error",
-        title: "No Output Layer",
-        description: "Your model needs an output layer to produce predictions.",
+        title: "No Neural Layer",
+        description: "Your model needs at least one neural layer to build model.",
       });
     }
     // Disconnected nodes

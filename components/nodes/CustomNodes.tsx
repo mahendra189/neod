@@ -1,3 +1,11 @@
+import React, { memo, useState, useEffect } from "react";
+import { Handle, Position, NodeProps } from "reactflow";
+import { Icon } from "@iconify/react";
+import { Input, Select, SelectItem, Switch, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, CheckboxGroup, Checkbox } from "@heroui/react";
+import clsx from "clsx";
+import { nodeStyles } from "./nodeStyles";
+import { LineChart, Line, XAxis, YAxis, Tooltip as ChartTooltip, Legend, ResponsiveContainer } from 'recharts';
+
 // Unified NeuralLayerNode (TensorFlow Playground style)
 const NeuralLayerNode = ({ data, type, selected, isConnectable }: NodeProps) => {
   const [layers, setLayers] = useState(
@@ -32,7 +40,7 @@ const NeuralLayerNode = ({ data, type, selected, isConnectable }: NodeProps) => 
 
   const removeLayer = (index: number) => {
     // Prevent removing input/output layers or if only 1 hidden layer left
-  const hiddenCount = layers.filter((l: { type: string; neurons: number }) => l.type === 'hidden').length;
+    const hiddenCount = layers.filter((l: { type: string; neurons: number }) => l.type === 'hidden').length;
     if (layers.length <= 3 || index === 0 || index === layers.length - 1 || (layers[index].type === 'hidden' && hiddenCount <= 1)) return;
     const newLayers = [...layers];
     newLayers.splice(index, 1);
@@ -49,7 +57,7 @@ const NeuralLayerNode = ({ data, type, selected, isConnectable }: NodeProps) => 
     >
       <Handle type="target" position={Position.Left} isConnectable={isConnectable} />
       {layers.map((layer: { type: string; neurons: number }, idx: number) => {
-  const hiddenCount = layers.filter((l: { type: string; neurons: number }) => l.type === 'hidden').length;
+        const hiddenCount = layers.filter((l: { type: string; neurons: number }) => l.type === 'hidden').length;
         const disableRemove = layers.length <= 3 || idx === 0 || idx === layers.length - 1 || (layer.type === 'hidden' && hiddenCount <= 1);
         const disableAdd = layers.length >= 20;
         return (
@@ -84,17 +92,24 @@ const NeuralLayerNode = ({ data, type, selected, isConnectable }: NodeProps) => 
     </div>
   );
 };
-import React, { memo, useState, useEffect } from "react";
-import { Handle, Position, NodeProps } from "reactflow";
-import { Icon } from "@iconify/react";
-import { Input, Select, SelectItem, Switch, Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from "@heroui/react";
-import clsx from "clsx";
-import { nodeStyles } from "./nodeStyles";
-import { LineChart, Line, XAxis, YAxis, Tooltip as ChartTooltip, Legend, ResponsiveContainer } from 'recharts';
 
 // Database Config Node - Lets user configure dataset preprocessing
 const DatabaseConfigNode = ({ data, type, selected, isConnectable }: NodeProps) => {
   const [showModal, setShowModal] = useState(false);
+
+  const [selectedX, setSelectedX] = useState<string[]>(data.selectedX || []);
+  const [selectedY, setSelectedY] = useState<string[]>(data.selectedY || []);
+
+  const handleXChange = (values: string[]) => {
+    setSelectedX(values);
+    data.onChange?.({ selectedX: values });
+  };
+
+  const handleYChange = (values: string[]) => {
+    setSelectedY(values);
+    data.onChange?.({ selectedY: values });
+  };
+
   // Only show minimal info on node
   return (
     <div
@@ -143,43 +158,87 @@ const DatabaseConfigNode = ({ data, type, selected, isConnectable }: NodeProps) 
       <div className="absolute right-2" style={{ top: '58%' }}>
         <span className="bg-emerald-900 text-xs px-1 rounded">y</span>
       </div>
-      {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white text-black rounded-lg shadow-lg p-6 min-w-[320px] relative">
-            <button className="absolute top-2 right-2 text-lg" onClick={() => setShowModal(false)}>&times;</button>
-            <div className="font-bold mb-2">Database Config</div>
+      <Modal isOpen={showModal} onClose={() => setShowModal(false)}>
+        <ModalContent>
+          <ModalHeader>Database Config</ModalHeader>
+          <ModalBody>
             <div className="mb-2">
               <div className="text-xs font-semibold mb-1">Select X (features):</div>
-              <Select
-                multiple
-                className="w-full text-black text-xs"
-                value={data.selectedX || []}
-                onChange={val => data.onChange?.({ selectedX: val })}
-              >
-                {(data.xColumns || []).map((col: string) => (
-                  <SelectItem key={col}>{col}</SelectItem>
-                ))}
-              </Select>
+              {(data.xColumns || []).length > 30 ? (
+                <div className="mb-2">
+                  <div className="text-xs text-red-600 mb-2">
+                    Too many columns to display ({data.xColumns.length}). Showing as a formatted list below:
+                  </div>
+                  <div className="bg-emerald-100 text-emerald-900 rounded p-2 text-xs max-h-40 overflow-y-auto whitespace-pre-wrap break-all">
+                    {data.xColumns.join(', ')}
+                  </div>
+                  <div className="mt-2 text-xs text-gray-700">
+                    You can still select columns programmatically or by filtering.
+                  </div>
+                </div>
+              ) : (data.xColumns || []).length > 10 ? (
+                <>
+                  <CheckboxGroup
+                    value={selectedX}
+                    onValueChange={handleXChange}
+                    className="grid grid-cols-2 gap-2"
+                  >
+                    {(data.xColumns || []).map((col: string) => (
+                      <Checkbox key={col} value={col}>{col}</Checkbox>
+                    ))}
+                  </CheckboxGroup>
+                  {/* Show selected X as chips */}
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {selectedX.map((val: string) => (
+                      <span key={val} className="bg-emerald-200 text-emerald-900 px-2 py-0.5 rounded text-xs">{val}</span>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <CheckboxGroup
+                    value={selectedX}
+                    onValueChange={handleXChange}
+                    className="flex flex-wrap gap-2"
+                  >
+                    {(data.xColumns || []).map((col: string) => (
+                      <Checkbox key={col} value={col}>{col}</Checkbox>
+                    ))}
+                  </CheckboxGroup>
+                  {/* Show selected X as chips */}
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {selectedX.map((val: string) => (
+                      <span key={val} className="bg-emerald-200 text-emerald-900 px-2 py-0.5 rounded text-xs">{val}</span>
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
             <div className="mb-2">
               <div className="text-xs font-semibold mb-1">Select y (target):</div>
-              <Select
-                className="w-full text-black text-xs"
-                value={data.selectedY || []}
-                onChange={val => data.onChange?.({ selectedY: [val] })}
+              <CheckboxGroup
+                value={selectedY}
+                onValueChange={handleYChange}
+                className="flex flex-wrap gap-2"
               >
                 {(data.yColumns || []).map((col: string) => (
-                  <SelectItem key={col}>{col}</SelectItem>
+                  <Checkbox key={col} value={col}>{col}</Checkbox>
                 ))}
-              </Select>
+              </CheckboxGroup>
+              {/* Show selected Y as chips */}
+              <div className="flex flex-wrap gap-1 mt-1">
+                {selectedY.map((val: string) => (
+                  <span key={val} className="bg-emerald-200 text-emerald-900 px-2 py-0.5 rounded text-xs">{val}</span>
+                ))}
+              </div>
             </div>
-            <div className="flex gap-2 mb-2">
+            <div className="flex gap-2 items-end mb-2">
               <div className="flex-1">
-                <div className="text-xs font-semibold mb-1">Train Split</div>
-                <Input
+                <label className="text-xs">Train Split</label>
+                <input
                   type="number"
-                  min={0.5}
-                  max={0.99}
+                  min={0}
+                  max={1}
                   step={0.01}
                   value={data.trainSplit ?? 0.8}
                   onChange={e => data.onChange?.({ trainSplit: parseFloat(e.target.value) })}
@@ -218,9 +277,12 @@ const DatabaseConfigNode = ({ data, type, selected, isConnectable }: NodeProps) 
                 </table>
               </div>
             )}
-          </div>
-        </div>
-      )}
+          </ModalBody>
+          <ModalFooter>
+            <button className="px-4 py-1 rounded bg-emerald-700 text-white" onClick={() => setShowModal(false)}>Close</button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
     </div>
   );
 };
@@ -228,7 +290,7 @@ const DatabaseConfigNode = ({ data, type, selected, isConnectable }: NodeProps) 
 // Dataset Node - Lets user select dataset for training
 const DatasetNode = ({ data, type, selected, isConnectable }: NodeProps) => {
   const dataset: string = data.dataset || 'mnist';
-  const setDataset = typeof data.onDatasetChange === 'function' ? data.onDatasetChange : () => {};
+  const setDataset = typeof data.onDatasetChange === 'function' ? data.onDatasetChange : () => { };
   const handleCsv = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0] && typeof data.onCsvUpload === 'function') {
       data.onCsvUpload(e.target.files[0]);
@@ -315,8 +377,8 @@ const GraphNode = ({ data, type, selected, isConnectable }: NodeProps) => {
       </div>
       {metricsHistory.length > 0 && (
         <div className="flex justify-between text-xs text-blue-100 mt-1">
-          <span>Last Loss: <span className="font-mono text-orange-200">{metricsHistory[metricsHistory.length-1].loss?.toFixed(4)}</span></span>
-          <span>Last Acc: <span className="font-mono text-blue-200">{(metricsHistory[metricsHistory.length-1].acc*100).toFixed(2)}%</span></span>
+          <span>Last Loss: <span className="font-mono text-orange-200">{metricsHistory[metricsHistory.length - 1].loss?.toFixed(4)}</span></span>
+          <span>Last Acc: <span className="font-mono text-blue-200">{(metricsHistory[metricsHistory.length - 1].acc * 100).toFixed(2)}%</span></span>
         </div>
       )}
       <Handle
