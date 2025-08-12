@@ -14,7 +14,7 @@ import { Icon } from "@iconify/react";
 import { Card, CardBody, CardFooter, RadioGroup, Radio } from "@heroui/react";
 import { Button } from "@heroui/button";
 
-import { nodeTypes } from "./nodes/CustomNodes";
+import nodeTypes from "./nodes/CustomNodes";
 import Papa from 'papaparse';
 import { NetworkCodeGenerator } from "./CodeGenerator";
 import { getLayoutedElements } from "./utils/layoutUtils";
@@ -60,13 +60,13 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
             nds.map((node) =>
               node.id === "inputlayer-1"
                 ? {
-                    ...node,
-                    data: {
-                      ...node.data,
-                      count: Math.max(1, newCount),
-                      params: { shape: [newCount] },
-                    },
-                  }
+                  ...node,
+                  data: {
+                    ...node.data,
+                    count: Math.max(1, newCount),
+                    params: { shape: [newCount] },
+                  },
+                }
                 : node,
             ),
           );
@@ -88,9 +88,9 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
             nds.map((node) =>
               node.id === "output-1"
                 ? {
-                    ...node,
-                    data: { ...node.data, count: Math.max(1, newCount) },
-                  }
+                  ...node,
+                  data: { ...node.data, count: Math.max(1, newCount) },
+                }
                 : node,
             ),
           );
@@ -218,7 +218,7 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
   const [runner, setRunner] = useState<TfjsRunner | null>(null);
   const [isRunning, setIsRunning] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
-  const [liveChartData, setLiveChartData] = useState<{epoch: number, loss: number, acc: number}[]>([]);
+  const [liveChartData, setLiveChartData] = useState<{ epoch: number, loss: number, acc: number }[]>([]);
   const [liveMetrics, setLiveMetrics] = useState<any>(null);
   const [currentEpoch, setCurrentEpoch] = useState(0);
   const [totalEpochs, setTotalEpochs] = useState(10);
@@ -379,53 +379,53 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
             "lstm",
           ].includes(nodeData.type)
             ? {
-                count:
-                  nodeData.type === "inputLayer"
-                    ? 784
-                    : nodeData.type === "outputLayer"
-                      ? 1
-                      : nodeData.type === "embedding"
-                        ? 64
-                        : nodeData.type === "lstm"
-                          ? 128
-                          : 128,
-                onChange: (newCount: number) => {
-                  setNodes((nds) =>
-                    nds.map((node) =>
-                      node.id === newNode.id
-                        ? {
-                            ...node,
-                            data: {
-                              ...node.data,
-                              count: Math.max(1, newCount),
-                            },
-                          }
-                        : node,
-                    ),
-                  );
-                },
-              }
+              count:
+                nodeData.type === "inputLayer"
+                  ? 784
+                  : nodeData.type === "outputLayer"
+                    ? 1
+                    : nodeData.type === "embedding"
+                      ? 64
+                      : nodeData.type === "lstm"
+                        ? 128
+                        : 128,
+              onChange: (newCount: number) => {
+                setNodes((nds) =>
+                  nds.map((node) =>
+                    node.id === newNode.id
+                      ? {
+                        ...node,
+                        data: {
+                          ...node.data,
+                          count: Math.max(1, newCount),
+                        },
+                      }
+                      : node,
+                  ),
+                );
+              },
+            }
             : {}),
           // Add text value handling for text input nodes
           ...(nodeData.type === "textInput"
             ? {
-                value: "Enter name...",
-                onChange: (newValue: string) => {
-                  setNodes((nds) =>
-                    nds.map((node) =>
-                      node.id === newNode.id
-                        ? {
-                            ...node,
-                            data: {
-                              ...node.data,
-                              value: newValue,
-                            },
-                          }
-                        : node,
-                    ),
-                  );
-                },
-              }
+              value: "Enter name...",
+              onChange: (newValue: string) => {
+                setNodes((nds) =>
+                  nds.map((node) =>
+                    node.id === newNode.id
+                      ? {
+                        ...node,
+                        data: {
+                          ...node.data,
+                          value: newValue,
+                        },
+                      }
+                      : node,
+                  ),
+                );
+              },
+            }
             : {}),
           // Add parameter handling for algorithm, optimizer, loss, and scheduler nodes
           ...([
@@ -452,61 +452,61 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
             "reducelronplateau",
           ].includes(nodeData.type)
             ? {
-                params: {},
-                onParamsChange: (newParams: any) => {
-                  setNodes((nds) =>
-                    nds.map((node) =>
-                      node.id === newNode.id
-                        ? {
-                            ...node,
-                            data: {
-                              ...node.data,
-                              params: newParams,
-                            },
-                          }
-                        : node,
-                    ),
-                  );
-                },
-              }
+              params: {},
+              onParamsChange: (newParams: any) => {
+                setNodes((nds) =>
+                  nds.map((node) =>
+                    node.id === newNode.id
+                      ? {
+                        ...node,
+                        data: {
+                          ...node.data,
+                          params: newParams,
+                        },
+                      }
+                      : node,
+                  ),
+                );
+              },
+            }
             : {}),
           // Add configuration handling for training config nodes
           ...(nodeData.type === "training_config"
             ? {
-                config: {
-                  epochs: 10,
-                  batch_size: 32,
-                  validation_split: 0.2,
-                  early_stopping: false,
-                  save_best: true,
-                },
-                onConfigChange: (newConfig: any) => {
-                  setNodes((nds) =>
-                    nds.map((node) =>
-                      node.id === newNode.id
-                        ? {
-                            ...node,
-                            data: {
-                              ...node.data,
-                              config: newConfig,
-                            },
-                          }
-                        : node,
-                    ),
-                  );
-                },
-              }
+              config: {
+                epochs: 10,
+                batch_size: 32,
+                validation_split: 0.2,
+                early_stopping: false,
+                save_best: true,
+              },
+              onConfigChange: (newConfig: any) => {
+                setNodes((nds) =>
+                  nds.map((node) =>
+                    node.id === newNode.id
+                      ? {
+                        ...node,
+                        data: {
+                          ...node.data,
+                          config: newConfig,
+                        },
+                      }
+                      : node,
+                  ),
+                );
+              },
+            }
             : {}),
           // Add metrics handling for metrics nodes
           ...(nodeData.type === "metrics"
             ? {
-                metrics: {
-                  accuracy: 0.0,
-                  loss: 0.0,
-                  val_accuracy: 0.0,
-                  val_loss: 0.0,
-                },
-              }
+              metrics: {
+                accuracy: 0.0,
+                loss: 0.0,
+                val_accuracy: 0.0,
+                val_loss: 0.0,
+              },
+            }
             : {}),
         },
       };
@@ -821,14 +821,14 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
     await tfjsRunner.run({
       mode,
       networkJson: { nodes, edges },
-  dataset: dataset as import("../runner/tfjsRunner").DatasetType | File,
+      dataset: dataset as import("../runner/tfjsRunner").DatasetType | File,
       epochs: totalEpochs,
       batchSize: 32,
-      onEpochEnd: () => {},
-      onNodeExecute: () => {},
-      onWarning: () => {},
-      onError: () => {},
-      onComplete: () => {},
+      onEpochEnd: () => { },
+      onNodeExecute: () => { },
+      onWarning: () => { },
+      onError: () => { },
+      onComplete: () => { },
     });
   };
   const handlePause = () => { runner?.pause(); setIsPaused(true); };
@@ -852,7 +852,7 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
 
       {/* Model Validator Button (top right) */}
       <div className="absolute top-4 right-56 z-20">
-  <ModelValidator nodes={nodes} edges={edges} onIssueSelect={handleIssueSelect} />
+        <ModelValidator nodes={nodes} edges={edges} onIssueSelect={handleIssueSelect} />
       </div>
 
       {/* Main ReactFlow canvas */}
@@ -889,14 +889,14 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
                 xColumns = dsState.columns;
                 yColumns = dsState.columns;
               } else if (dsState && dsState.dataset === 'mnist') {
-                xColumns = Array.from({length: 784}, (_, i) => `pixel${i}`);
+                xColumns = Array.from({ length: 784 }, (_, i) => `pixel${i}`);
                 yColumns = ['digit'];
               } else if (dsState && dsState.dataset === 'iris') {
                 xColumns = ['sepalLength', 'sepalWidth', 'petalLength', 'petalWidth'];
                 yColumns = ['species'];
               }
             }
-            const DatabaseConfigNode = nodeTypes.database_config.type || nodeTypes.database_config;
+            const DatabaseConfigNode = nodeTypes.databaseConfig.type || nodeTypes.databaseConfig;
             return (
               <DatabaseConfigNode
                 {...props}
@@ -940,9 +940,9 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
                 ...node.style,
                 ...(selectedNodeId === node.id || highlightedNode === node.id
                   ? {
-                      boxShadow: "0 0 0 3px #f59e42",
-                      border: "2px solid #f59e42",
-                    }
+                    boxShadow: "0 0 0 3px #f59e42",
+                    border: "2px solid #f59e42",
+                  }
                   : {}),
               },
             }))}

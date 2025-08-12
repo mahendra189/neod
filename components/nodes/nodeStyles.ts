@@ -1,4 +1,4 @@
-export const nodeStyles = {
+const nodeStyles = {
   base: "border-2 shadow-lg bg-white dark:bg-gray-800",
   selected: "border-blue-500",
   handle: "w-3 h-3 bg-blue-500",
@@ -16,3 +16,5 @@ export const nodeStyles = {
   loss: "rounded-lg min-w-[160px] gradient-red",
   scheduler: "rounded-lg min-w-[180px] gradient-yellow",
 };
+
+export default nodeStyles;

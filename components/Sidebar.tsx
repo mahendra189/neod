@@ -2,322 +2,58 @@ import React from "react";
 import { Card, CardBody, Button } from "@heroui/react";
 import { Icon } from "@iconify/react";
 
+
+// Refactored nodeTypesByCategory to match the modular node system
 const nodeTypesByCategory = [
   {
     category: "Input/Output",
     nodes: [
-      {
-        type: "inputLayer",
-        label: "Input Layer",
-        icon: "lucide:box",
-        details: "Neural Network Input Layer",
-      },
-      {
-        type: "outputLayer",
-        label: "Output Layer",
-        icon: "lucide:arrow-right",
-        details: "Neural Network Output Layer",
-      },
-      {
-        type: "textInput",
-        label: "Text Input",
-        icon: "lucide:type",
-        details: "Text Input Node",
-      },
-      {
-        type: "textOutput",
-        label: "Text Output",
-        icon: "lucide:file-text",
-        details: "Text Output Node",
-      },
+      { type: "inputOutput", label: "Input/Output", icon: "lucide:box", details: "Input or Output Node" },
+      { type: "textInput", label: "Text Input", icon: "lucide:type", details: "Text Input Node" },
+      { type: "textOutput", label: "Text Output", icon: "lucide:file-text", details: "Text Output Node" },
+      { type: "dataset", label: "Dataset", icon: "lucide:database", details: "Dataset Node" },
+      { type: "graph", label: "Graph", icon: "lucide:activity", details: "Graph Node" },
     ],
   },
   {
-    category: "Core",
+    category: "Core Layers",
     nodes: [
-      {
-        type: "dense",
-        label: "Dense",
-        icon: "lucide:grid",
-        details: "Dense Layer",
-      },
-      {
-        type: "hidden",
-        label: "Hidden",
-        icon: "lucide:layers",
-        details: "Hidden Layer",
-      },
-      {
-        type: "flatten",
-        label: "Flatten",
-        icon: "lucide:align-horizontal-space-around",
-        details: "Flatten Layer",
-      },
-      {
-        type: "reshape",
-        label: "Reshape",
-        icon: "lucide:shuffle",
-        details: "Reshape Layer",
-      },
-      {
-        type: "embedding",
-        label: "Embedding",
-        icon: "lucide:layers",
-        details: "Embedding Layer",
-      },
+      { type: "neuralLayer", label: "Neural Layer", icon: "lucide:grid", details: "Neural Network Layer" },
+      { type: "denseHidden", label: "Dense/Hidden", icon: "lucide:layers", details: "Dense/Hidden Layer" },
+      { type: "base", label: "Base Node", icon: "lucide:square", details: "Base Node" },
+      { type: "dropout", label: "Dropout", icon: "lucide:cloud-rain", details: "Dropout Layer" },
     ],
   },
   {
-    category: "Convolutional",
+    category: "Config & Training",
     nodes: [
-      {
-        type: "conv2d",
-        label: "Conv2D",
-        icon: "lucide:square",
-        details: "2D Convolutional Layer",
-      },
-      {
-        type: "maxpool",
-        label: "Max Pool",
-        icon: "lucide:square",
-        details: "Max Pooling Layer",
-      },
-    ],
-  },
-  {
-    category: "Normalization",
-    nodes: [
-      {
-        type: "batchnorm",
-        label: "BatchNorm",
-        icon: "lucide:equal",
-        details: "Batch Normalization Layer",
-      },
-    ],
-  },
-  {
-    category: "Regularization",
-    nodes: [
-      {
-        type: "dropout",
-        label: "Dropout",
-        icon: "lucide:cloud-rain",
-        details: "Dropout Layer",
-      },
-    ],
-  },
-  {
-    category: "Activation",
-    nodes: [
-      {
-        type: "activation",
-        label: "Activation",
-        icon: "lucide:zap",
-        details: "Activation Layer",
-      },
-      {
-        type: "softmax",
-        label: "Softmax",
-        icon: "lucide:divide",
-        details: "Softmax Layer",
-      },
-    ],
-  },
-  {
-    category: "Recurrent",
-    nodes: [
-      {
-        type: "recurrent",
-        label: "Recurrent",
-        icon: "lucide:repeat",
-        details: "Recurrent Layer",
-      },
-      {
-        type: "lstm",
-        label: "LSTM",
-        icon: "lucide:activity",
-        details: "LSTM Layer",
-      },
-      {
-        type: "gru",
-        label: "GRU",
-        icon: "lucide:git-merge",
-        details: "GRU Layer",
-      },
-    ],
-  },
-  {
-    category: "Merge",
-    nodes: [
-      {
-        type: "add",
-        label: "Add",
-        icon: "lucide:plus",
-        details: "Add Layer",
-      },
-      {
-        type: "concat",
-        label: "Concatenate",
-        icon: "lucide:link",
-        details: "Concatenate Layer",
-      },
-    ],
-  },
-  {
-    category: "Training",
-    nodes: [
-      {
-        type: "training_config",
-        label: "Training Config",
-        icon: "lucide:settings",
-        details: "Training Configuration Hub",
-      },
-      {
-        type: "metrics",
-        label: "Metrics",
-        icon: "lucide:bar-chart-3",
-        details: "Training Metrics",
-      },
+      { type: "databaseConfig", label: "Database Config", icon: "lucide:settings", details: "Database Config Node" },
+      { type: "trainingConfig", label: "Training Config", icon: "lucide:settings", details: "Training Configuration Hub" },
+      { type: "metrics", label: "Metrics", icon: "lucide:bar-chart-3", details: "Training Metrics" },
     ],
   },
   {
     category: "Optimizers",
     nodes: [
-      {
-        type: "adam",
-        label: "Adam",
-        icon: "lucide:zap",
-        details: "Adam Optimizer",
-      },
-      {
-        type: "sgd",
-        label: "SGD",
-        icon: "lucide:trending-up",
-        details: "Stochastic Gradient Descent",
-      },
-      {
-        type: "rmsprop",
-        label: "RMSprop",
-        icon: "lucide:activity",
-        details: "RMSprop Optimizer",
-      },
-      {
-        type: "adagrad",
-        label: "AdaGrad",
-        icon: "lucide:target",
-        details: "Adaptive Gradient Algorithm",
-      },
-      {
-        type: "adamw",
-        label: "AdamW",
-        icon: "lucide:zap",
-        details: "Adam with Weight Decay",
-      },
+      { type: "optimizer", label: "Optimizer", icon: "lucide:zap", details: "Optimizer Node" },
     ],
   },
   {
     category: "Algorithms",
     nodes: [
-      {
-        type: "cnn",
-        label: "CNN",
-        icon: "lucide:image",
-        details: "Convolutional Neural Network",
-      },
-      {
-        type: "rnn",
-        label: "RNN",
-        icon: "lucide:repeat",
-        details: "Recurrent Neural Network",
-      },
-      {
-        type: "autoencoder",
-        label: "AutoEncoder",
-        icon: "lucide:compress",
-        details: "Autoencoder Network",
-      },
-      {
-        type: "gan",
-        label: "GAN",
-        icon: "lucide:shuffle",
-        details: "Generative Adversarial Network",
-      },
-      {
-        type: "transformer",
-        label: "Transformer",
-        icon: "lucide:cpu",
-        details: "Transformer Architecture",
-      },
-      {
-        type: "resnet",
-        label: "ResNet",
-        icon: "lucide:layers-2",
-        details: "Residual Network",
-      },
-      {
-        type: "vae",
-        label: "VAE",
-        icon: "lucide:shuffle",
-        details: "Variational Autoencoder",
-      },
+      { type: "algorithm", label: "Algorithm", icon: "lucide:cpu", details: "Algorithm Node" },
     ],
   },
   {
     category: "Loss Functions",
     nodes: [
-      {
-        type: "crossentropy",
-        label: "CrossEntropy",
-        icon: "lucide:target",
-        details: "Cross Entropy Loss",
-      },
-      {
-        type: "mse",
-        label: "MSE",
-        icon: "lucide:square",
-        details: "Mean Squared Error",
-      },
-      {
-        type: "mae",
-        label: "MAE",
-        icon: "lucide:triangle",
-        details: "Mean Absolute Error",
-      },
-      {
-        type: "bce",
-        label: "BCE",
-        icon: "lucide:binary",
-        details: "Binary Cross Entropy",
-      },
+      { type: "loss", label: "Loss", icon: "lucide:target", details: "Loss Node" },
     ],
   },
   {
-    category: "Learning Rate Schedulers",
+    category: "Schedulers",
     nodes: [
-      {
-        type: "steplr",
-        label: "StepLR",
-        icon: "lucide:stairs",
-        details: "Step Learning Rate Scheduler",
-      },
-      {
-        type: "exponentiallr",
-        label: "ExponentialLR",
-        icon: "lucide:trending-down",
-        details: "Exponential LR Decay",
-      },
-      {
-        type: "cosineannealinglr",
-        label: "CosineAnnealingLR",
-        icon: "lucide:waves",
-        details: "Cosine Annealing LR",
-      },
-      {
-        type: "reducelronplateau",
-        label: "ReduceLROnPlateau",
-        icon: "lucide:trending-down",
-        details: "Reduce LR on Plateau",
-      },
+      { type: "scheduler", label: "Scheduler", icon: "lucide:clock", details: "Scheduler Node" },
     ],
   },
 ];
