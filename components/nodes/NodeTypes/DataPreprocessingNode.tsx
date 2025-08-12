@@ -40,6 +40,23 @@ const DataPreprocessingNode = ({ data, selected, isConnectable }: NodeProps) => 
 
     const handleConfigChange = (changes: Partial<PreprocessingConfig>) => {
         const newConfig = { ...config, ...changes };
+        
+        // Calculate output shapes based on preprocessing
+        const xShape = data.inputData?.xColumns?.length || 0;
+        let outputXShape = xShape;
+        
+        // Adjust shape for different preprocessing methods
+        if (newConfig.xScaler !== 'none') {
+            // Scaling doesn't change shape
+            outputXShape = xShape;
+        }
+
+        let outputYShape = 1; // Default for label encoding
+        if (newConfig.yEncoder === 'onehot') {
+            // One-hot encoding expands to number of unique classes
+            outputYShape = data.inputData?.uniqueClasses?.length || 2;
+        }
+
         data.onChange?.({ 
             config: newConfig,
             outputX: {
@@ -49,17 +66,24 @@ const DataPreprocessingNode = ({ data, selected, isConnectable }: NodeProps) => 
                     featureRange: newConfig.xFeatureRange,
                     missingHandler: newConfig.xHandleMissing,
                     missingValue: newConfig.xMissingValue
-                }
+                },
+                shape: outputXShape
             },
             outputY: {
                 ...data.outputY,
                 preprocessing: {
                     encoder: newConfig.yEncoder,
                     unknownHandling: newConfig.yUnknownHandling
-                }
+                },
+                shape: outputYShape
             }
         });
     };
+
+    // Calculate shapes for display
+    const inputXShape = data.inputData?.xColumns?.length || '?';
+    const outputXShape = data.outputX?.shape || inputXShape;
+    const outputYShape = data.outputY?.shape || 1;
 
     return (
         <div
@@ -96,9 +120,9 @@ const DataPreprocessingNode = ({ data, selected, isConnectable }: NodeProps) => 
                 </div>
             </div>
 
-            <div className="text-xs">
-                <div className="opacity-75">X: {config.xScaler} scaling</div>
-                <div className="opacity-75">y: {config.yEncoder} encoding</div>
+            <div className="text-xs space-y-1">
+                <div className="opacity-75">X: {config.xScaler} scaling ({inputXShape} → {outputXShape})</div>
+                <div className="opacity-75">y: {config.yEncoder} encoding ({outputYShape} classes)</div>
             </div>
 
             <Handle
