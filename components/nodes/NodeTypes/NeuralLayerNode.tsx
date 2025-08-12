@@ -1,9 +1,10 @@
 import React, { useState, useEffect, memo } from 'react';
-import { Modal, ModalContent } from '@heroui/react';
+import { Button, Modal, ModalContent } from '@heroui/react';
 import clsx from 'clsx';
 import { Handle, Position } from 'reactflow';
 
 import { NodeProps } from 'reactflow';
+import { Icon } from '@iconify/react';
 
 const activationOptions = [
   { value: 'relu', label: 'ReLU' },
@@ -119,8 +120,6 @@ const NeuralLayerNode = ({ data, type, selected, isConnectable }: NodeProps) => 
           'bg-neutral-800 text-white rounded-lg shadow-lg p-3 w-56',
           selected && 'ring-2 ring-blue-400'
         )}
-        onClick={() => setShowModal(true)}
-        style={{ cursor: 'pointer' }}
       >
         <Handle type="target" position={Position.Left} isConnectable={isConnectable} />
         <div className="flex flex-col items-center gap-1">
@@ -128,7 +127,10 @@ const NeuralLayerNode = ({ data, type, selected, isConnectable }: NodeProps) => 
           <div className="flex flex-col items-center gap-0.5">
             {stackedSummary}
           </div>
-          <button onClick={() => setShowModal(true)} className="mt-2 px-2 py-1 rounded bg-blue-600 text-xs" type="button">Edit Layers</button>
+          <Button isIconOnly aria-label="edit" color="default" size='sm' onClick={() => setShowModal(true)} className="self-end">
+            <Icon className="w-5 h-5" icon="lucide:edit" />
+          </Button>
+          {/* <button onClick={() => setShowModal(true)} className="mt-2 px-2 py-1 rounded bg-blue-600 text-xs cursor-pointer" type="button">Edit Layers</button> */}
         </div>
         <Handle type="source" position={Position.Right} isConnectable={isConnectable} />
       </div>
