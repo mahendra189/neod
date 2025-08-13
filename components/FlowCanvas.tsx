@@ -9,6 +9,8 @@ import ReactFlow, {
   Connection,
   useReactFlow,
   ConnectionMode,
+  Node,
+  applyNodeChanges,
 } from "reactflow";
 import { Icon } from "@iconify/react";
 import { Card, CardBody, CardFooter, RadioGroup, Radio } from "@heroui/react";
@@ -22,7 +24,7 @@ import { ModelRunner } from "./ModelRunner";
 import { getTemplateByType } from "./templates/templateDefinitions";
 import HelpSystem from "./HelpSystem";
 import ModelValidator from "./ModelValidator";
-import type { Node, Edge } from 'reactflow';
+import type { Edge } from 'reactflow';
 import FloatingToolbar from "./FloatingToolbar";
 import SaveProjectModal from "./SaveProjectModal";
 import { useToast } from "./ToastProvider";
@@ -47,104 +49,75 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
   const { showSuccess, showError } = useToast();
   // Default simple text processing network
   const getDefaultNodes = (): Node[] => [
-    {
-      id: "inputlayer-1",
-      type: "inputLayer",
-      data: {
-        label: "Input Layer (10)",
-        icon: "lucide:square-dot-minus",
-        details: "MNIST input layer - 28x28 flattened",
-        count: 10,
-        params: { shape: [10] },
-        onChange: (newCount: number) => {
-          setNodes((nds) =>
-            nds.map((node) =>
-              node.id === "inputlayer-1"
-                ? {
-                  ...node,
-                  data: {
-                    ...node.data,
-                    count: Math.max(1, newCount),
-                    params: { shape: [newCount] },
-                  },
-                }
-                : node,
-            ),
-          );
-        },
-      },
-      position: { x: 300, y: 200 },
-    },
-    {
-      id: "output-1",
-      type: "outputLayer",
-      data: {
-        label: "Output (10 classes)",
-        count: 10,
-        icon: "lucide:arrow-right",
-        details: "MNIST output - 10 classes",
-        params: { activation: "softmax", units: 10 },
-        onChange: (newCount: number) => {
-          setNodes((nds) =>
-            nds.map((node) =>
-              node.id === "output-1"
-                ? {
-                  ...node,
-                  data: { ...node.data, count: Math.max(1, newCount) },
-                }
-                : node,
-            ),
-          );
-        },
-      },
-      position: { x: 800, y: 200 },
-    },
-    {
-      id: "graph-1",
-      type: "graphNode",
-      data: {
-        label: "Training Graph",
-        icon: "lucide:line-chart",
-        details: "Live Loss & Accuracy",
-        metricsHistory: [],
-      },
-      position: { x: 1050, y: 200 },
-    },
+
   ];
 
   const getDefaultEdges = (): Edge[] => [
-    {
-      id: "e-textinput-inputlayer",
-      source: "input-1",
-      target: "inputlayer-1",
-      animated: true,
-      type: "smooth",
-    },
-    {
-      id: "e-inputlayer-dense",
-      source: "inputlayer-1",
-      target: "dense-1",
-      animated: true,
-      type: "smooth",
-    },
-    {
-      id: "e-dense-output",
-      source: "dense-1",
-      target: "output-1",
-      animated: true,
-      type: "smooth",
-    },
-    {
-      id: "e-output-graph",
-      source: "output-1",
-      target: "graph-1",
-      animated: false,
-      type: "smooth",
-    },
+
   ];
 
-  const [nodes, setNodes, onNodesChange] = useNodesState(getDefaultNodes());
+  // Initialize neural layer node data
+  const initializeNeuralLayerNode = useCallback((node: Node) => {
+    if (node.type === 'neuralLayer') {
+      const layers = [
+        { type: 'input', neurons: 2 },
+        { type: 'hidden', neurons: 4 },
+        { type: 'output', neurons: 1 },
+      ];
+      const activations = Array(layers.length - 1).fill('relu');
+      
+      const transformedData = {
+        inputLayer: {
+          units: layers[0].neurons,
+          activation: activations[0]
+        },
+        hiddenLayers: layers
+          .filter((l, i) => i > 0 && i < layers.length - 1)
+          .map((layer, idx) => ({
+            type: 'dense',
+            units: layer.neurons,
+            activation: activations[idx]
+          })),
+        outputLayer: {
+          units: layers[layers.length - 1].neurons,
+          activation: activations[activations.length - 1]
+        },
+        loss: 'categoricalCrossentropy',
+        metrics: ['accuracy']
+      };
+
+      return {
+        ...node,
+        data: {
+          ...node.data,
+          layers,
+          activations,
+          transformedData
+        }
+      };
+    }
+    return node;
+  }, []);
+
+  const [nodes, setNodes] = useNodesState(getDefaultNodes());
   const [edges, setEdges, onEdgesChange] = useEdgesState(getDefaultEdges());
+
+  // Handle node changes with initialization
+  const handleNodesChange = useCallback((changes: any[]) => {
+    setNodes(nds => {
+      // First apply the changes
+      const afterChanges = applyNodeChanges(changes, nds);
+      
+      // Then ensure neural layer nodes are initialized
+      return afterChanges.map(node => {
+        if (node.type === 'neuralLayer' && (!node.data?.layers || !node.data?.transformedData)) {
+          return initializeNeuralLayerNode(node);
+        }
+        return node;
+      });
+    });
+  }, [initializeNeuralLayerNode]);
+
   // Dataset node state by node id
   const [datasetNodeState, setDatasetNodeState] = useState<Record<string, { dataset: string; csvFile?: File; columns?: string[] }>>({});
 
@@ -192,11 +165,12 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
       const template = getTemplateByType(templateType);
 
       if (template) {
-        setNodes(template.nodes);
+        const initializedNodes = template.nodes.map(initializeNeuralLayerNode);
+        setNodes(initializedNodes);
         setEdges(template.edges);
       }
     }
-  }, [templateType, setNodes, setEdges]);
+  }, [templateType, setNodes, setEdges, initializeNeuralLayerNode]);
 
   // Load project when projectId changes
   useEffect(() => {
@@ -736,14 +710,14 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
     });
     setValidationIssues(issues);
     // Show toast for errors/warnings
-    if (issues.length > 0) {
-      const error = issues.find(i => i.type === 'error');
-      if (error) showError('Model Error', error.title + ': ' + error.description);
-      else {
-        const warning = issues.find(i => i.type === 'warning');
-        if (warning) showError('Model Warning', warning.title + ': ' + warning.description);
-      }
-    }
+    // if (issues.length > 0) {
+    //   const error = issues.find(i => i.type === 'error');
+    //   if (error) showError('Model Error', error.title + ': ' + error.description);
+    //   else {
+    //     const warning = issues.find(i => i.type === 'warning');
+    //     if (warning) showError('Model Warning', warning.title + ': ' + warning.description);
+    //   }
+    // }
   }, [nodes, edges, showError]);
 
   // Handle saving a project
@@ -1011,6 +985,8 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
               animated: true,
             }}
             defaultViewport={{ x: 0, y: 0, zoom: 1 }}
+            onNodesChange={handleNodesChange}
+            onEdgesChange={onEdgesChange}
             edges={edges.map(edge => {
               // If the edge is from a database_config node and has a sourceHandle, add a label
               const sourceNode = nodes.find(n => n.id === edge.source);
@@ -1045,7 +1021,6 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
             onDrop={onDrop}
             onEdgesChange={onEdgesChange}
             onNodeClick={(_, node) => onNodeSelect(node)}
-            onNodesChange={onNodesChange}
           >
             <Controls />
             <Background color="#aaa" gap={20} />

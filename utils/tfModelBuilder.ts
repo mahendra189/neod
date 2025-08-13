@@ -4,6 +4,16 @@ import { Node, Edge } from 'reactflow';
 let tf: typeof import('@tensorflow/tfjs');
 let tfvis: typeof import('@tensorflow/tfjs-vis');
 
+interface TFTensor {
+  shape: number[];
+  dtype: string;
+  size: number;
+  strides: number[];
+  dataId: {};
+  id: number;
+  rankType: string;
+}
+
 async function initTF() {
   if (typeof window === 'undefined') return null;
   
@@ -16,144 +26,189 @@ async function initTF() {
   return { tf, tfvis };
 }
 
-export async function buildTfModel(nodes: Node[], edges: Edge[]) {
-  const libs = await initTF();
-  if (!libs) return null;
-  const { tf } = libs;
-  
-  const model = tf.sequential();
-  
-  // Sort nodes by their connections to ensure proper layer order
-  const sortedNodes = sortNodesByConnections(nodes, edges);
+function topologicalSort(nodes: Node[], edges: Edge[]): Node[] {
+  const nodeMap = new Map<string, Node>();
+  nodes.forEach(node => nodeMap.set(node.id, node));
 
-  // Find input shape from the first layer or use default
-  let inputShape: number[] = [2]; // Default for XOR dataset
-  const firstNode = sortedNodes[0];
-  if (firstNode?.data?.inputShape) {
-    inputShape = firstNode.data.inputShape;
-  } else if (firstNode?.type === 'algorithm' && firstNode.data.algorithmType === 'cnn') {
-    inputShape = [28, 28, 1]; // Default for CNN (e.g., MNIST)
-  }
-
-  let isFirstLayer = true;
-  for (const node of sortedNodes) {
-    const type = node.type;
-    const data = node.data;
-
-    switch (type) {
-      case 'denseHidden':
-      case 'neuralLayer':
-        const units = data.neurons || 64;
-        const activation = data.activation || 'relu';
-        if (isFirstLayer) {
-          model.add(tf.layers.dense({ units, activation, inputShape }));
-        } else {
-          model.add(tf.layers.dense({ units, activation }));
-        }
-        break;
-
-      case 'dropout':
-        const rate = data.rate || 0.2;
-        model.add(tf.layers.dropout({ rate }));
-        break;
-
-      case 'algorithm':
-        if (data.algorithmType === 'cnn') {
-          const filters = data.params?.filters || [32, 64];
-          const kernelSize = data.params?.kernel_size || 3;
-          const poolSize = data.params?.pool_size || 2;
-
-          filters.forEach((f: number, index: number) => {
-            if (index === 0 && isFirstLayer) {
-              // First CNN layer needs inputShape
-              model.add(tf.layers.conv2d({
-                filters: f,
-                kernelSize,
-                activation: 'relu',
-                inputShape: [28, 28, 1] // For image data
-              }));
-            } else {
-              model.add(tf.layers.conv2d({
-                filters: f,
-                kernelSize,
-                activation: 'relu'
-              }));
-            }
-            model.add(tf.layers.maxPooling2d({ poolSize }));
-          });
-        }
-        break;
-    }
-    isFirstLayer = false;
-  }
-
-  return model;
-}
-
-function sortNodesByConnections(nodes: Node[], edges: Edge[]): Node[] {
-  const nodeMap = new Map(nodes.map(node => [node.id, node]));
-  const graph = new Map<string, string[]>();
+  const graph = new Map<string, Set<string>>();
   const inDegree = new Map<string, number>();
 
-  // Initialize graphs
+  // Initialize graph and in-degree
   nodes.forEach(node => {
-    graph.set(node.id, []);
+    graph.set(node.id, new Set());
     inDegree.set(node.id, 0);
   });
 
-  // Build adjacency list and count incoming edges
+  // Build graph and calculate in-degrees
   edges.forEach(edge => {
     const source = edge.source;
     const target = edge.target;
-    graph.get(source)?.push(target);
-    inDegree.set(target, (inDegree.get(target) || 0) + 1);
+    if (graph.has(source)) {
+      graph.get(source)?.add(target);
+      inDegree.set(target, (inDegree.get(target) || 0) + 1);
+    }
   });
 
-  // Topological sort
+  // Find nodes with 0 in-degree
   const queue: string[] = [];
-  const sorted: Node[] = [];
-
-  // Start with nodes that have no incoming edges
-  nodes.forEach(node => {
-    if ((inDegree.get(node.id) || 0) === 0) {
-      queue.push(node.id);
-    }
+  inDegree.forEach((degree, nodeId) => {
+    if (degree === 0) queue.push(nodeId);
   });
 
+  const result: Node[] = [];
   while (queue.length > 0) {
-    const currentId = queue.shift()!;
-    const currentNode = nodeMap.get(currentId);
-    if (currentNode) {
-      sorted.push(currentNode);
+    const nodeId = queue.shift()!;
+    const node = nodeMap.get(nodeId);
+    if (node) {
+      result.push(node);
+      graph.get(nodeId)?.forEach(neighbor => {
+        inDegree.set(neighbor, (inDegree.get(neighbor) || 0) - 1);
+        if (inDegree.get(neighbor) === 0) {
+          queue.push(neighbor);
+        }
+      });
     }
+  }
 
-    graph.get(currentId)?.forEach(neighborId => {
-      inDegree.set(neighborId, (inDegree.get(neighborId) || 0) - 1);
-      if ((inDegree.get(neighborId) || 0) === 0) {
-        queue.push(neighborId);
+  return result;
+}
+
+interface OptimizerConfig {
+  type: string;
+  learningRate?: number;
+  momentum?: number;
+  beta1?: number;
+  beta2?: number;
+  epsilon?: number;
+}
+
+type ActivationType = 'relu' | 'sigmoid' | 'softmax' | 'tanh' | 'linear';
+
+interface DenseLayerConfig {
+  inputShape?: number[];
+  units: number;
+  activation: ActivationType;
+  kernelInitializer?: string;
+}
+
+interface DropoutLayerConfig {
+  rate: number;
+}
+
+function createOptimizer(tf: any, config: OptimizerConfig): any {
+  const { type, learningRate = 0.01, momentum = 0.9, beta1 = 0.9, beta2 = 0.999, epsilon = 1e-7 } = config;
+  switch (type.toLowerCase()) {
+    case 'sgd':
+      return tf.train.sgd(learningRate);
+    case 'adam':
+      return tf.train.adam(learningRate, beta1, beta2, epsilon);
+    case 'rmsprop':
+      return tf.train.rmsprop(learningRate);
+    case 'momentum':
+      return tf.train.momentum(learningRate, momentum);
+    default:
+      return tf.train.adam(learningRate);
+  }
+}
+
+export async function buildTfModel(nodes: Node[], edges: Edge[]) {
+  const tfLibs = await initTF();
+  if (!tfLibs) throw new Error('TensorFlow.js failed to initialize');
+
+  const sortedNodes = topologicalSort(nodes, edges);
+  const neuralNode = sortedNodes.find(node => node.type === 'neuralLayer');
+  const optimizer = sortedNodes.find(node => node.type == 'optimizer');
+  console.log(optimizer)
+  if (!neuralNode || !neuralNode.data) {
+    throw new Error('Neural network node not found in the graph');
+  }
+
+  // Extract the transformed data from the neural node
+  const {
+    inputLayer,
+    hiddenLayers,
+    outputLayer,
+    loss,
+    metrics
+  } = neuralNode.data.transformedData || {};
+
+  console.log('Building model with data:', {
+    inputLayer,
+    hiddenLayers,
+    outputLayer,
+    loss,
+    metrics
+  });
+
+  if (!inputLayer || !outputLayer || !hiddenLayers) {
+    throw new Error('Neural network configuration is incomplete');
+  }
+
+  // Create sequential model
+  const sequentialModel = tfLibs.tf.sequential();
+
+  // Add input layer
+  if (inputLayer) {
+    const inputConfig: DenseLayerConfig = {
+      inputShape: [inputLayer.units],
+      units: inputLayer.units,
+      activation: inputLayer.activation || 'relu'
+    };
+    sequentialModel.add(tfLibs.tf.layers.dense(inputConfig));
+  }
+
+  // Add hidden layers
+  if (hiddenLayers && Array.isArray(hiddenLayers)) {
+    hiddenLayers.forEach((layer, index) => {
+      if (layer.type === 'dense') {
+        const config: DenseLayerConfig = {
+          units: layer.units,
+          activation: layer.activation || 'relu',
+          kernelInitializer: 'glorotNormal'
+        };
+        sequentialModel.add(tfLibs.tf.layers.dense(config));
+      } else if (layer.type === 'dropout' && layer.rate) {
+        const dropoutConfig: DropoutLayerConfig = {
+          rate: layer.rate
+        };
+        sequentialModel.add(tfLibs.tf.layers.dropout(dropoutConfig));
       }
     });
   }
 
-  return sorted;
-}
+  // Add output layer
+  if (outputLayer) {
+    const outputConfig: DenseLayerConfig = {
+      units: outputLayer.units,
+      activation: outputLayer.activation || 'softmax'
+    };
+    sequentialModel.add(tfLibs.tf.layers.dense(outputConfig));
+  }
 
-interface TFTensor {
-  shape: number[];
-  dtype: string;
-  size: number;
-  strides: number[];
-  dataId: {};
-  id: number;
-  rankType: string;
-}
+  // Get optimizer configuration
+  const optimizerConfig: OptimizerConfig = optimizer && optimizer.data
+    ? { ...optimizer.data.params, type:optimizer.data.label }
+    : {
+        type: 'adam',
+        learningRate: 0.001
+      };
+      console.log(optimizerConfig)
 
+  // Compile the model
+  sequentialModel.compile({
+    optimizer: createOptimizer(tfLibs.tf, optimizerConfig),
+    loss: loss || 'categoricalCrossentropy',
+    metrics: metrics || ['accuracy']
+  });
+
+  return sequentialModel;
+}
 export async function trainModel(
   model: any,
   dataset: { xs: TFTensor; ys: TFTensor },
   optimizer: { type: string; params: any },
   loss: { type: string },
-  epochs = 10,
+  epochs = 100,
   batchSize = 32
 ) {
   const libs = await initTF();
@@ -211,10 +266,10 @@ export function getOptimizer(nodes: Node[]) {
 }
 
 export function getLoss(nodes: Node[]) {
-  const lossNode = nodes.find(n => n.type === 'loss');
-  return {
-    type: lossNode?.data.lossType || 'categoricalCrossentropy'
-  };
+    const lossNode = nodes.find(n => n.type === 'loss');
+    return {
+        type: lossNode?.data.lossType || 'meanSquaredError' // mse = 'meanSquaredError'
+    };
 }
 
 export async function loadDummyData() {

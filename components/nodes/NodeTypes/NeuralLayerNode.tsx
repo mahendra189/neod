@@ -6,6 +6,41 @@ import { Handle, Position } from 'reactflow';
 import { NodeProps } from 'reactflow';
 import { Icon } from '@iconify/react';
 
+interface Layer {
+  type: 'input' | 'hidden' | 'output';
+  neurons: number;
+}
+
+interface TransformedData {
+  inputLayer?: {
+    units: number;
+    activation: string;
+  };
+  hiddenLayers: Array<{
+    type: string;
+    units: number;
+    activation: string;
+  }>;
+  outputLayer?: {
+    units: number;
+    activation: string;
+  };
+  loss: string;
+  metrics: string[];
+}
+
+interface NeuralLayerProps extends NodeProps {
+  data: {
+    layers?: Layer[];
+    activations?: string[];
+    label?: string;
+    icon?: string;
+    details?: string;
+    transformedData?: TransformedData;
+    onChange?: (layers: Layer[], activations: string[], transformedData: TransformedData) => void;
+  } & Record<string, any>;
+}
+
 const activationOptions = [
   { value: 'relu', label: 'ReLU' },
   { value: 'sigmoid', label: 'Sigmoid' },
@@ -14,9 +49,9 @@ const activationOptions = [
   { value: 'none', label: 'None' },
 ];
 
-const NeuralLayerNode = ({ data, type, selected, isConnectable }: NodeProps) => {
+const NeuralLayerNode = ({ data, type, selected, isConnectable }: NeuralLayerProps) => {
 
-  const [layers, setLayers] = useState(
+  const [layers, setLayers] = useState<Layer[]>(
     data.layers || [
       { type: 'input', neurons: 2 },
       { type: 'hidden', neurons: 4 },
@@ -26,11 +61,29 @@ const NeuralLayerNode = ({ data, type, selected, isConnectable }: NodeProps) => 
   const [showModal, setShowModal] = useState(false);
   // Activations: one between each pair of layers (length = layers.length - 1)
   const [activations, setActivations] = useState(
-    data.activations || Array(layers.length - 1).fill('none')
+    data.activations || Array(layers.length - 1).fill('relu')
   );
+
+  // Initialize the neural network data structure
+  useEffect(() => {
+    const initialTransformedData = createTransformedData(layers, activations);
+    
+    // Update the node data with both the layers and transformed data
+    if (data.onChange) {
+      // Store both the raw layers/activations and the transformed data
+      data.data = {
+        ...data.data,
+        layers,
+        activations,
+        transformedData: initialTransformedData
+      };
+      data.onChange(layers, activations, initialTransformedData);
+    }
+  }, []);
 
   // Keep activations array in sync with layers
   useEffect(() => {
+    // Update activations array
     setActivations((prev: string[]) => {
       if (layers.length < 2) return [];
       if (!prev || prev.length !== layers.length - 1) {
@@ -39,7 +92,54 @@ const NeuralLayerNode = ({ data, type, selected, isConnectable }: NodeProps) => 
       }
       return prev;
     });
-  }, [layers.length]);
+
+    // Create transformed data structure
+    const transformedData = createTransformedData(layers, activations);
+
+    // Update both the node's data and notify parent through onChange
+    if (data.onChange) {
+      // Update the node's own data
+      data.layers = layers;
+      data.activations = activations;
+      data.transformedData = transformedData;
+
+      // Notify parent of changes
+      data.onChange(layers, activations, transformedData);
+    }
+
+    // Log the current state for debugging
+    console.log('Neural Layer Node Data:', {
+      layers,
+      activations,
+      transformedData
+    });
+  }, [layers, activations]);
+
+  const createTransformedData = (layerList: Layer[], activationList: string[]): TransformedData => {
+    const inputLayer = layerList.find(l => l.type === 'input');
+    const outputLayer = layerList.find(l => l.type === 'output');
+    const hiddenLayers = layerList
+      .filter(l => l.type === 'hidden')
+      .map((layer, idx) => ({
+        type: 'dense',
+        units: layer.neurons,
+        activation: activationList[idx] || 'relu'
+      }));
+
+    return {
+      inputLayer: inputLayer ? {
+        units: inputLayer.neurons,
+        activation: activationList[0] || 'relu'
+      } : undefined,
+      hiddenLayers,
+      outputLayer: outputLayer ? {
+        units: outputLayer.neurons,
+        activation: activationList[activationList.length - 1] || 'softmax'
+      } : undefined,
+      loss: 'categoricalCrossentropy',
+      metrics: ['accuracy']
+    };
+  };
 
   const updateLayer = (index: number, key: string, value: any) => {
     if (key === 'neurons') {
@@ -50,14 +150,14 @@ const NeuralLayerNode = ({ data, type, selected, isConnectable }: NodeProps) => 
     const newLayers = [...layers];
     newLayers[index] = { ...newLayers[index], [key]: value };
     setLayers(newLayers);
-    data.onChange?.(newLayers, activations);
+    data.onChange?.(newLayers, activations, createTransformedData(newLayers, activations));
   };
 
   const updateActivation = (idx: number, value: string) => {
     const newActs = [...activations];
     newActs[idx] = value;
     setActivations(newActs);
-    data.onChange?.(layers, newActs);
+    data.onChange?.(layers, newActs, createTransformedData(layers, newActs));
   };
 
   const addLayer = (index: number) => {
@@ -69,11 +169,11 @@ const NeuralLayerNode = ({ data, type, selected, isConnectable }: NodeProps) => 
     const newActs = [...activations];
     newActs.splice(index + 1, 0, 'none');
     setActivations(newActs);
-    data.onChange?.(newLayers, newActs);
+    data.onChange?.(newLayers, newActs, createTransformedData(newLayers, newActs));
   };
 
   const removeLayer = (index: number) => {
-    const hiddenCount = layers.filter((l: { type: string }) => l.type === 'hidden').length;
+    const hiddenCount = layers.filter((l: Layer) => l.type === 'hidden').length;
     if (layers.length <= 3 || index === 0 || index === layers.length - 1 || (layers[index].type === 'hidden' && hiddenCount <= 1)) return;
     const newLayers = [...layers];
     newLayers.splice(index, 1);
@@ -82,7 +182,7 @@ const NeuralLayerNode = ({ data, type, selected, isConnectable }: NodeProps) => 
     const newActs = [...activations];
     newActs.splice(index === layers.length - 1 ? index - 1 : index, 1);
     setActivations(newActs);
-    data.onChange?.(newLayers, newActs);
+    data.onChange?.(newLayers, newActs, createTransformedData(newLayers, newActs));
   };
 
   // Compact summary for node
