@@ -89,7 +89,7 @@ const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
           content={isExpanded ? "Hide Tools" : "More Tools"}
           placement="left"
         >
-          <Button
+          {/* <Button
             isIconOnly
             className="shadow-lg"
             color="secondary"
@@ -101,7 +101,7 @@ const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
             ) : (
               <Settings className="w-4 h-4" />
             )}
-          </Button>
+          </Button> */}
         </Tooltip>
       </div>
 

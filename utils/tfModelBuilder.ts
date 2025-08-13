@@ -120,20 +120,6 @@ export async function buildTfModel(nodes: Node[], edges: Edge[]) {
     const optimizer = sortedNodes.find(node => node.type === 'optimizer');
     const lossNode = sortedNodes.find(node => node.type === 'loss');
     const metricsNode = sortedNodes.find(node => node.type === 'metrics');
-
-    const validLosses = [
-        'meanSquaredError',
-        'categoricalCrossentropy',
-        'binaryCrossentropy',
-        'meanAbsoluteError',
-        'meanSquaredLogarithmicError',
-        'hinge',
-        'squaredHinge',
-        'poisson',
-        'cosineProximity',
-        'logcosh',
-        'huberLoss'
-    ];
     const lossMap: Record<string, string> = {
         crossentropy: 'categoricalCrossentropy',
         mse: 'meanSquaredError',
@@ -143,9 +129,6 @@ export async function buildTfModel(nodes: Node[], edges: Edge[]) {
 
     if (lossNode && lossNode.data && lossNode.data.lossType) {
         const mappedLoss = lossMap[lossNode.data.lossType] || lossNode.data.lossType;
-        if (!validLosses.includes(mappedLoss)) {
-            throw new Error(`Invalid loss type: ${lossNode.data.lossType}. Must be one of: ${validLosses.join(', ')}`);
-        }
         lossNode.data.lossType = mappedLoss;
     }
 

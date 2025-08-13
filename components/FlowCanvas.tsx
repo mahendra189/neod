@@ -905,20 +905,12 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
       ref={reactFlowWrapper}
       style={{ width: "100%", height: "100%", position: "relative" }}
     >
-      {/* Real-time execution controls */}
-      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 flex gap-2 bg-white/80 dark:bg-black/40 rounded-lg shadow p-2">
-        <Button color="primary" disabled={isRunning} onClick={() => handleRun('train')}>Run</Button>
-        <Button color="secondary" disabled={isRunning} onClick={() => handleRun('inference')}>Inference</Button>
-        <Button color="warning" disabled={!isRunning || isPaused} onClick={handlePause}>Pause</Button>
-        <Button color="success" disabled={!isRunning || !isPaused} onClick={handleResume}>Resume</Button>
-        <Button color="danger" disabled={!isRunning} onClick={handleStop}>Stop</Button>
-      </div>
 
 
       {/* Model Validator Button (top right) */}
-      <div className="absolute top-4 right-56 z-20">
+      {/* <div className="absolute top-4 right-56 z-20">
         <ModelValidator nodes={nodes} edges={edges} onIssueSelect={handleIssueSelect} />
-      </div>
+      </div> */}
 
       {/* Main ReactFlow canvas */}
       {/* Custom nodeTypes to inject dataset node state/handlers, memoized to avoid React Flow error */}
