@@ -256,11 +256,11 @@ const NeuralLayerNode = ({ data, type, selected, isConnectable }: NodeProps) => 
                     const positions = [];
                     const totalHeight = (10 - 1) * neuronGap;
                     const startY = visHeight / 2 - totalHeight / 2;
-                    for (let i = 0; i < 5; i++) {
+                    for (let i = 0; i < 4; i++) {
                       positions.push({ y: startY + i * neuronGap, type: 'neuron' as 'neuron' });
                     }
                     positions.push({ y: startY + 5 * neuronGap, type: 'dots' as 'dots' });
-                    for (let i = 0; i < 5; i++) {
+                    for (let i = 0; i < 4; i++) {
                       positions.push({ y: startY + (6 + i) * neuronGap, type: 'neuron' as 'neuron' });
                     }
                     return positions;
