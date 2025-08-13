@@ -1,12 +1,13 @@
 import React, { useState } from "react";
 import { Card, CardBody, Button, Tooltip } from "@heroui/react";
-import { Network, Code, Settings, X, Save } from "lucide-react";
+import { Network, Code, Settings, X, Save, Play } from "lucide-react";
 import { Node, Edge } from "reactflow";
 
 import ModelTemplates from "./ModelTemplates";
 import ModelValidator from "./ModelValidator";
 import PerformanceAnalysis from "./PerformanceAnalysis";
 import ProjectManager from "./ProjectManager";
+import { ModelRunner } from "./ModelRunner";
 
 import { SavedProject } from "@/utils/projectStorage";
 
@@ -77,6 +78,12 @@ const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
           </Button>
         </Tooltip>
 
+        <Tooltip content="Run Model">
+          <div className="w-10 h-10">
+            <ModelRunner />
+          </div>
+        </Tooltip>
+
         {/* Collapsible Menu Toggle */}
         <Tooltip
           content={isExpanded ? "Hide Tools" : "More Tools"}
@@ -140,8 +147,7 @@ const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
                     onIssueSelect={onIssueSelect}
                   />
                   <PerformanceAnalysis edges={edges} nodes={nodes} />
-                  {/* Placeholder for even grid */}
-                  <div />
+                  <ModelRunner />
                 </div>
               </div>
             </div>

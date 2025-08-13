@@ -18,6 +18,7 @@ import nodeTypes from "./nodes/CustomNodes";
 import Papa from 'papaparse';
 import { NetworkCodeGenerator } from "./CodeGenerator";
 import { getLayoutedElements } from "./utils/layoutUtils";
+import { ModelRunner } from "./ModelRunner";
 import { getTemplateByType } from "./templates/templateDefinitions";
 import HelpSystem from "./HelpSystem";
 import ModelValidator from "./ModelValidator";
