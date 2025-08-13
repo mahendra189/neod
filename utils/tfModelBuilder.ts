@@ -120,6 +120,13 @@ export async function buildTfModel(nodes: Node[], edges: Edge[]) {
     const optimizer = sortedNodes.find(node => node.type === 'optimizer');
     const lossNode = sortedNodes.find(node => node.type === 'loss');
     const metricsNode = sortedNodes.find(node => node.type === 'metrics');
+    const trainingConfigNode = nodes.find(n => n.type === 'trainingConfig');
+    console.log('Nodes:', sortedNodes);
+    console.log('Optimizer node:', optimizer);
+    console.log('Loss node:', lossNode);
+    console.log('Metrics node:', metricsNode);
+    console.log('Training config node:', trainingConfigNode);
+    
     const lossMap: Record<string, string> = {
         crossentropy: 'categoricalCrossentropy',
         mse: 'meanSquaredError',
@@ -324,4 +331,10 @@ export async function loadFromFile(file: File) {
         };
         reader.readAsText(file);
     });
+}
+
+
+export function getTrainConfig(nodes: Node[]) {
+    const trainingConfigNode = nodes.find(n => n.type === 'trainingConfig');
+    return trainingConfigNode?.data?.config;
 }

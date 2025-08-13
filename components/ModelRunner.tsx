@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from 'react';
 import { useReactFlow } from 'reactflow';
 import dynamic from 'next/dynamic';
-import { buildTfModel, trainModel, getOptimizer, getLoss, loadDummyData, loadFromFile } from '../utils/tfModelBuilder';
+import { buildTfModel, trainModel, getOptimizer, getLoss, loadDummyData, loadFromFile, getTrainConfig } from '../utils/tfModelBuilder';
 import { Button } from '@heroui/react';
 import { Play, Upload } from 'lucide-react';
 
@@ -46,9 +46,10 @@ function ModelRunnerComponent() {
       // Get optimizer and loss configurations
       const optimizer = getOptimizer(nodes);
       const loss = getLoss(nodes);
+      const config = getTrainConfig(nodes);
 
       // Train the model
-      await trainModel(model, data, optimizer, loss);
+      await trainModel(model, data, optimizer, loss,config.epochs,config.batch_size);
 
       console.log('Training completed successfully');
     } catch (error) {

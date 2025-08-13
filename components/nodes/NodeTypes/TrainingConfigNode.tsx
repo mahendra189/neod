@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import clsx from 'clsx';
 import { Handle, Position, NodeProps } from 'reactflow';
 import { Icon } from '@iconify/react';
@@ -7,27 +7,42 @@ import { Switch } from '@heroui/switch';
 import { Modal, ModalContent } from '@heroui/react';
 
 const TrainingConfigNode = ({ data, type, selected, isConnectable }: NodeProps) => {
-
-
-
   const [isExpanded, setIsExpanded] = useState(false);
   const [showModal, setShowModal] = useState(false);
-  const [config, setConfig] = useState(
-    data.config || {
-      epochs: 10,
-      batch_size: 32,
-      validation_split: 0.2,
-      early_stopping: false,
-      save_best: true,
-    },
-  );
+
+  // Initialize the default config values
+  const defaultConfig = {
+    epochs: 10,
+    batch_size: 32,
+    validation_split: 0.2,
+    early_stopping: false,
+    save_best: true,
+  };
+
+  // Initialize node data with config on mount
+  useEffect(() => {
+    if (data && !data.config) {
+      data.config = defaultConfig;
+      if (data.onConfigChange) {
+        data.onConfigChange(defaultConfig);
+      }
+    }
+  }, []);
+  // Use the config from node data or default values
+  const [config, setConfig] = useState(data.config || defaultConfig);
 
   const updateConfig = (key: string, value: any) => {
     const newConfig = { ...config, [key]: value };
-
     setConfig(newConfig);
+    
+    // Update the node's data
     if (data.onConfigChange) {
       data.onConfigChange(newConfig);
+    }
+    
+    // Ensure the config is stored in the node's data directly
+    if (data) {
+      data.config = newConfig;
     }
   };
 
@@ -72,7 +87,13 @@ const TrainingConfigNode = ({ data, type, selected, isConnectable }: NodeProps) 
               <Icon className="w-5 h-5" icon={data.icon || "lucide:settings"} />
               <div>
                 <div className="font-bold text-sm">{data.label || "Training Config"}</div>
-                <div className="text-xs opacity-80">Epochs: {config.epochs}, Batch: {config.batch_size}</div>
+                <div className="text-xs opacity-80">
+                  Epochs: {config.epochs}, Batch: {config.batch_size}
+                  {config.early_stopping && ", Early Stop"}
+                </div>
+                <div className="text-xs opacity-80">
+                  Val Split: {(config.validation_split * 100).toFixed(0)}%
+                </div>
               </div>
             </div>
           </div>
