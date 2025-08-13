@@ -260,9 +260,12 @@ export async function trainModel(
     });
 
     // Create the visualization container
-    const container = { name: 'Training Performance' };
     const metrics = ['loss', 'val_loss', 'acc', 'val_acc'];
-
+    const container = document.getElementById('tfvis-container');
+    if (!container) {
+        throw new Error('TensorFlow.js visualization container not found');
+    }
+    
     // Train the model
     await model.fit(dataset.xs, dataset.ys, {
         epochs,
@@ -271,7 +274,7 @@ export async function trainModel(
         callbacks: tfvis.show.fitCallbacks(
             container,
             metrics,
-            { height: 200, callbacks: ['onEpochEnd'] }
+            { height: 300, callbacks: ['onEpochEnd'] }
         )
     });
 

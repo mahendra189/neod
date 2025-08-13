@@ -4,6 +4,7 @@ import dynamic from 'next/dynamic';
 import { buildTfModel, trainModel, getOptimizer, getLoss, loadDummyData, loadFromFile, getTrainConfig } from '../utils/tfModelBuilder';
 import { Button } from '@heroui/react';
 import { Play, Upload } from 'lucide-react';
+import TrainingVizModal from './TrainingVizModal';
 
 interface TFTensor {
   shape: number[];
@@ -19,6 +20,7 @@ interface TFTensor {
 function ModelRunnerComponent() {
   const { getNodes, getEdges } = useReactFlow();
   const [isTraining, setIsTraining] = useState(false);
+  const [showVizModal, setShowVizModal] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleRun = useCallback(async (dataset?: { xs: TFTensor; ys: TFTensor } | null) => {
@@ -74,7 +76,10 @@ function ModelRunnerComponent() {
   return (
     <div className="space-y-2">
       <Button
-        onClick={() => handleRun()}
+        onClick={async () => {
+          setShowVizModal(true);
+          await handleRun();
+        }}
         className="w-full flex items-center justify-center gap-2"
         color="primary"
         disabled={isTraining}
@@ -98,6 +103,11 @@ function ModelRunnerComponent() {
       >
         <Upload className="w-4 h-4" />
         Upload Data
+
+      <TrainingVizModal 
+        isOpen={showVizModal}
+        onClose={() => setShowVizModal(false)}
+      />
       </Button>
     </div>
   );
