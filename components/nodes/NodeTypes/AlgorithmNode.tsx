@@ -199,9 +199,60 @@ const AlgorithmNode = ({ data, selected, isConnectable }: NodeProps) => {
             {data.icon && <Icon className="w-5 h-5" icon={data.icon} />}
             <span className="font-medium capitalize">{algorithmType} Algorithm</span>
           </div>
-          {algorithmType === "cnn" && cnnLayers.length > 0 && (
-            <div className="text-xs mt-2 opacity-70">
-              {cnnLayers.length} layers: {cnnLayers.filter(l => l.type === 'conv2d').length} Conv, {cnnLayers.filter(l => l.type === 'maxpool' || l.type === 'avgpool').length} Pool
+          {algorithmType === "cnn" && Array.isArray(cnnLayers) && cnnLayers.length > 0 && (
+            <div className="mt-2">
+              <div className="flex gap-1 overflow-x-auto pb-1">
+                {cnnLayers.slice(0, 6).map((layer, idx) => (
+                  <div key={idx} className={clsx(
+                    'flex-shrink-0 w-16 h-16 rounded border-2 flex flex-col items-center justify-center text-xs font-semibold',
+                    layer.type === 'conv2d' ? 'border-blue-300 bg-blue-50 text-blue-800' :
+                    layer.type === 'maxpool' ? 'border-green-300 bg-green-50 text-green-800' :
+                    layer.type === 'avgpool' ? 'border-teal-300 bg-teal-50 text-teal-800' :
+                    layer.type === 'dropout' ? 'border-orange-300 bg-orange-50 text-orange-800' :
+                    layer.type === 'batchnorm' ? 'border-purple-300 bg-purple-50 text-purple-800' :
+                    'border-gray-300 bg-gray-50 text-gray-800'
+                  )}>
+                    <div className="text-center">
+                      {layer.type === 'conv2d' && (
+                        <>
+                          <div>Conv2D</div>
+                          <div className="text-[10px]">{layer.filters}</div>
+                          <div className="text-[10px]">{layer.kernel_size}×{layer.kernel_size}</div>
+                        </>
+                      )}
+                      {layer.type === 'maxpool' && (
+                        <>
+                          <div>MaxPool</div>
+                          <div className="text-[10px]">{layer.pool_size}×{layer.pool_size}</div>
+                        </>
+                      )}
+                      {layer.type === 'avgpool' && (
+                        <>
+                          <div>AvgPool</div>
+                          <div className="text-[10px]">{layer.pool_size}×{layer.pool_size}</div>
+                        </>
+                      )}
+                      {layer.type === 'dropout' && (
+                        <>
+                          <div>Dropout</div>
+                          <div className="text-[10px]">{layer.rate}</div>
+                        </>
+                      )}
+                      {layer.type === 'batchnorm' && (
+                        <div>BatchNorm</div>
+                      )}
+                      {layer.type === 'flatten' && (
+                        <div>Flatten</div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+                {cnnLayers.length > 6 && (
+                  <div className="flex-shrink-0 w-16 h-16 rounded border-2 border-gray-300 bg-gray-50 flex items-center justify-center text-xs font-semibold text-gray-600">
+                    +{cnnLayers.length - 6}
+                  </div>
+                )}
+              </div>
             </div>
           )}
           <div className="text-xs mt-1 opacity-70">Double-click to configure</div>
