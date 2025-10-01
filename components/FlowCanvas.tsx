@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState, useEffect } from "react";
+import React, { useCallback, useRef, useState, useEffect, useMemo } from "react";
 import { Copy, Download, X } from "lucide-react";
 import ReactFlow, {
   Background,
@@ -938,6 +938,12 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
     }
   };
 
+  // Memoize custom node types to prevent React Flow performance issues
+  // Note: We pass edges and nodes dynamically in the wrapper components, but the structure itself is stable
+  const customNodeTypes = useMemo(() => ({
+    ...nodeTypes,
+  }), []);
+
   return (
     <div
       ref={reactFlowWrapper}
@@ -951,30 +957,45 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
       </div> */}
 
       {/* Main ReactFlow canvas */}
-      {/* Custom nodeTypes to inject dataset node state/handlers, memoized to avoid React Flow error */}
-      {/** Memoize customNodeTypes to avoid recreating on every render */}
-      {(() => {
-        // Memoize customNodeTypes
-        // eslint-disable-next-line react-hooks/rules-of-hooks
-        const customNodeTypes = React.useMemo(() => ({
-          ...nodeTypes,
-          dataset: (props: any) => {
-            const DatasetNode = nodeTypes.dataset.type || nodeTypes.dataset;
-            return (
-              <DatasetNode
-                {...props}
-                data={{
-                  ...props.data,
-                  dataset: datasetNodeState[props.id]?.dataset || 'mnist',
-                  onDatasetChange: (ds: string) => handleDatasetChange(props.id, ds),
-                  onCsvUpload: (file: File) => handleCsvUpload(props.id, file),
-                }}
-              />
-            );
-          },
-          databaseConfig: (props: any) => {
+      <ReactFlow
+        fitView
+        connectionMode={ConnectionMode.Loose}
+        defaultEdgeOptions={{
+          type: "smooth",
+          animated: true,
+        }}
+        defaultViewport={{ x: 0, y: 0, zoom: 1 }}
+        onNodesChange={handleNodesChange}
+        onEdgesChange={onEdgesChange}
+        edges={edges.map(edge => {
+          // If the edge is from a database_config node and has a sourceHandle, add a label
+          const sourceNode = nodes.find(n => n.id === edge.source);
+          if (sourceNode && sourceNode.type === 'database_config' && edge.sourceHandle) {
+            return {
+              ...edge,
+              label: edge.sourceHandle === 'x' ? 'X' : edge.sourceHandle === 'y' ? 'y' : undefined,
+              labelStyle: { fill: '#059669', fontWeight: 700, fontSize: 13, background: '#fff' },
+              labelBgStyle: { fill: '#fff', fillOpacity: 0.8 },
+              labelShowBg: true,
+            };
+          }
+          return edge;
+        })}
+        fitViewOptions={{ padding: 0.2 }}
+        nodeTypes={customNodeTypes}
+        nodes={nodes.map((node) => {
+          // Inject dynamic data for specific node types
+          let dynamicData = {};
+          
+          if (node.type === 'dataset') {
+            dynamicData = {
+              dataset: datasetNodeState[node.id]?.dataset || 'mnist',
+              onDatasetChange: (ds: string) => handleDatasetChange(node.id, ds),
+              onCsvUpload: (file: File) => handleCsvUpload(node.id, file),
+            };
+          } else if (node.type === 'databaseConfig') {
             // Find incoming edge from dataset node
-            const incoming = edges.find(e => e.target === props.id && nodes.find(n => n.id === e.source && n.type === 'dataset'));
+            const incoming = edges.find(e => e.target === node.id && nodes.find(n => n.id === e.source && n.type === 'dataset'));
             let xColumns: string[] = [];
             let yColumns: string[] = [];
             if (incoming) {
@@ -993,81 +1014,39 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
                 }
               }
             }
-            const DatabaseConfigNode = nodeTypes.databaseConfig.type || nodeTypes.databaseConfig;
-            return (
-              <DatabaseConfigNode
-                {...props}
-                data={{
-                  ...props.data,
-                  xColumns,
-                  yColumns,
-                }}
-              />
-            );
-          },
-          digitDrawer: (props: any) => {
-            const DigitDrawerNode = nodeTypes.digitDrawer.type || nodeTypes.digitDrawer;
-            return (
-              <DigitDrawerNode
-                {...props}
-                data={{
-                  ...props.data,
-                  onInference: handleDigitInference,
-                }}
-              />
-            );
-          },
-        }), [nodeTypes, datasetNodeState, handleDatasetChange, handleCsvUpload, handleDigitInference]);
-        return (
-          <ReactFlow
-            fitView
-            connectionMode={ConnectionMode.Loose}
-            defaultEdgeOptions={{
-              type: "smooth",
-              animated: true,
-            }}
-            defaultViewport={{ x: 0, y: 0, zoom: 1 }}
-            onNodesChange={handleNodesChange}
-            onEdgesChange={onEdgesChange}
-            edges={edges.map(edge => {
-              // If the edge is from a database_config node and has a sourceHandle, add a label
-              const sourceNode = nodes.find(n => n.id === edge.source);
-              if (sourceNode && sourceNode.type === 'database_config' && edge.sourceHandle) {
-                return {
-                  ...edge,
-                  label: edge.sourceHandle === 'x' ? 'X' : edge.sourceHandle === 'y' ? 'y' : undefined,
-                  labelStyle: { fill: '#059669', fontWeight: 700, fontSize: 13, background: '#fff' },
-                  labelBgStyle: { fill: '#fff', fillOpacity: 0.8 },
-                  labelShowBg: true,
-                };
-              }
-              return edge;
-            })}
-            fitViewOptions={{ padding: 0.2 }}
-            nodeTypes={customNodeTypes}
-            nodes={nodes.map((node) => ({
-              ...node,
-              style: {
-                ...node.style,
-                ...(selectedNodeId === node.id || highlightedNode === node.id
-                  ? {
-                    boxShadow: "0 0 0 3px #f59e42",
-                    border: "2px solid #f59e42",
-                  }
-                  : {}),
-              },
-            }))}
-            selectNodesOnDrag={false}
-            onConnect={onConnect}
-            onDragOver={onDragOver}
-            onDrop={onDrop}
-            onNodeClick={(_, node) => onNodeSelect(node)}
-          >
-            <Controls />
-            <Background color="#aaa" gap={20} />
-          </ReactFlow>
-        );
-      })()}
+            dynamicData = { xColumns, yColumns };
+          } else if (node.type === 'digitDrawer') {
+            dynamicData = {
+              onInference: handleDigitInference,
+            };
+          }
+          
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              ...dynamicData,
+            },
+            style: {
+              ...node.style,
+              ...(selectedNodeId === node.id || highlightedNode === node.id
+                ? {
+                  boxShadow: "0 0 0 3px #f59e42",
+                  border: "2px solid #f59e42",
+                }
+                : {}),
+            },
+          };
+        })}
+        selectNodesOnDrag={false}
+        onConnect={onConnect}
+        onDragOver={onDragOver}
+        onDrop={onDrop}
+        onNodeClick={(_, node) => onNodeSelect(node)}
+      >
+        <Controls />
+        <Background color="#aaa" gap={20} />
+      </ReactFlow>
 
       {/* Collapsible Toolbar - Top Right */}
       <div className="absolute top-4 right-4 z-10">
