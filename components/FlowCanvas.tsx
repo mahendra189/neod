@@ -223,6 +223,21 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
 
   const { project, fitView } = useReactFlow();
 
+  // Expose CNN training function globally for easy access
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      (window as any).trainCNNModel = () => {
+        console.log('🚀 Starting CNN Training from global function...');
+        handleCNNRun();
+      };
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        delete (window as any).trainCNNModel;
+      }
+    };
+  }, [nodes, edges]); // Re-create when nodes/edges change
+
   // Helper function to close panel and reset state
   const closePanel = useCallback(() => {
     setShowPanel(false);

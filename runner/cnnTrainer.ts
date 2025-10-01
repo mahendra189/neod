@@ -84,11 +84,16 @@ export class CNNTrainer {
       { filters: 64, kernelSize: 3, activation: 'relu' },
     ];
 
-    convLayers.forEach((layer, index) => {
+    convLayers.forEach((layer: any) => {
+      // Ensure kernelSize is properly set (handle both camelCase and snake_case)
+      const kernelSize = layer.kernelSize || layer.kernel_size || 3;
+      const filters = layer.filters || 32;
+      const activation = layer.activation || 'relu';
+
       model.add(tf.layers.conv2d({
-        filters: layer.filters,
-        kernelSize: layer.kernelSize,
-        activation: (layer.activation || 'relu') as any,
+        filters: filters,
+        kernelSize: kernelSize,
+        activation: activation as any,
         padding: 'same',
       }));
 
