@@ -453,8 +453,46 @@ class NetworkCodeGenerator {
           layerCode = `    ${layerName} = layers.LSTM(${lstmUnits})(${previousLayer})`;
           break;
 
-        case "batchnorm":
-          layerCode = `    ${layerName} = layers.BatchNormalization()(${previousLayer})`;
+        case "algorithm":
+          // Handle algorithm nodes like CNN
+          if (node.data.algorithmType === "cnn" && node.data.params?.layers) {
+            const cnnLayers = node.data.params.layers;
+            let algorithmCode = "";
+            
+            for (let i = 0; i < cnnLayers.length; i++) {
+              const layer = cnnLayers[i];
+              const subLayerName = `${layerName}_${i}`;
+              
+              switch (layer.type) {
+                case "conv2d":
+                  algorithmCode += `    ${subLayerName} = layers.Conv2D(${layer.filters || 32}, (${layer.kernel_size || 3}, ${layer.kernel_size || 3}), activation='${layer.activation || 'relu'}', padding='${layer.padding || 'same'}')(${i === 0 ? previousLayer : `${layerName}_${i-1}`})\n`;
+                  break;
+                case "maxpool":
+                  algorithmCode += `    ${subLayerName} = layers.MaxPooling2D((${layer.pool_size || 2}, ${layer.pool_size || 2}))(${i === 0 ? previousLayer : `${layerName}_${i-1}`})\n`;
+                  break;
+                case "avgpool":
+                  algorithmCode += `    ${subLayerName} = layers.AveragePooling2D((${layer.pool_size || 2}, ${layer.pool_size || 2}))(${i === 0 ? previousLayer : `${layerName}_${i-1}`})\n`;
+                  break;
+                case "dropout":
+                  algorithmCode += `    ${subLayerName} = layers.Dropout(${layer.rate || 0.5})(${i === 0 ? previousLayer : `${layerName}_${i-1}`})\n`;
+                  break;
+                case "batchnorm":
+                  algorithmCode += `    ${subLayerName} = layers.BatchNormalization()(${i === 0 ? previousLayer : `${layerName}_${i-1}`})\n`;
+                  break;
+                case "flatten":
+                  algorithmCode += `    ${subLayerName} = layers.Flatten()(${i === 0 ? previousLayer : `${layerName}_${i-1}`})\n`;
+                  break;
+              }
+              
+              if (i === cnnLayers.length - 1) {
+                previousLayer = subLayerName;
+              }
+            }
+            
+            layerCode = algorithmCode.trim();
+          } else {
+            layerCode = `    # ${node.data.algorithmType || 'algorithm'} - implementation needed`;
+          }
           break;
 
         case "concat":
@@ -705,6 +743,48 @@ class NetworkCodeGenerator {
 
           initCode = `        self.${layerName} = nn.LSTM(input_size=784, hidden_size=${lstmUnits}, batch_first=True)`;
           forwardCode = `        ${previousTensor}, _ = self.${layerName}(${previousTensor})`;
+          break;
+
+        case "algorithm":
+          // Handle algorithm nodes like CNN
+          if (node.data.algorithmType === "cnn" && node.data.params?.layers) {
+            const cnnLayers = node.data.params.layers;
+            let algorithmInitCode = "";
+            let algorithmForwardCode = "";
+            
+            for (let i = 0; i < cnnLayers.length; i++) {
+              const layer = cnnLayers[i];
+              const subLayerName = `${layerName}_${i}`;
+              
+              switch (layer.type) {
+                case "conv2d":
+                  const inChannels = i === 0 ? 3 : (cnnLayers[i-1].filters || 32); // Assuming RGB input
+                  algorithmInitCode += `        self.${subLayerName} = nn.Conv2d(${inChannels}, ${layer.filters || 32}, ${layer.kernel_size || 3}, padding=1)\n`;
+                  algorithmForwardCode += `        ${i === 0 ? previousTensor : previousTensor} = F.relu(self.${subLayerName}(${i === 0 ? previousTensor : previousTensor}))\n`;
+                  break;
+                case "maxpool":
+                  algorithmForwardCode += `        ${previousTensor} = F.max_pool2d(${previousTensor}, ${layer.pool_size || 2})\n`;
+                  break;
+                case "avgpool":
+                  algorithmForwardCode += `        ${previousTensor} = F.avg_pool2d(${previousTensor}, ${layer.pool_size || 2})\n`;
+                  break;
+                case "dropout":
+                  algorithmForwardCode += `        ${previousTensor} = F.dropout(${previousTensor}, p=${layer.rate || 0.5}, training=self.training)\n`;
+                  break;
+                case "batchnorm":
+                  algorithmForwardCode += `        ${previousTensor} = F.batch_norm(${previousTensor})\n`;
+                  break;
+                case "flatten":
+                  algorithmForwardCode += `        ${previousTensor} = ${previousTensor}.view(${previousTensor}.size(0), -1)\n`;
+                  break;
+              }
+            }
+            
+            initCode = algorithmInitCode.trim();
+            forwardCode = algorithmForwardCode.trim();
+          } else {
+            forwardCode = `        # ${node.data.algorithmType || 'algorithm'} - implementation needed`;
+          }
           break;
 
         case "output":
