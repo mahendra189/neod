@@ -74,6 +74,10 @@ export class TfjsRunner extends EventEmitter {
     this.emit('stopped');
   }
 
+  getModel(): tf.LayersModel | null {
+    return this.model;
+  }
+
   private async checkPaused() {
     if (this.paused && this.pausePromise) {
       await this.pausePromise;

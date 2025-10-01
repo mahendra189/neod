@@ -205,6 +205,17 @@ export const templateDefinitions: Record<string, TemplateDefinition> = {
         },
         position: { x: 1250, y: 150 },
       },
+      {
+        id: "digit-drawer-1",
+        type: "digitDrawer",
+        data: {
+          label: "Digit Drawer",
+          icon: "lucide:edit",
+          details: "Draw digits for MNIST inference",
+          onInference: () => Promise.resolve({ prediction: 0, confidence: 0 }),
+        },
+        position: { x: 700, y: 350 },
+      },
     ],
     edges: [
       { id: "e1", source: "input-cnn-1", target: "conv2d-1", type: "smooth" },

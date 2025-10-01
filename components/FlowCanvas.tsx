@@ -214,6 +214,7 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
   const [currentProject, setCurrentProject] = useState<SavedProject | null>(
     null,
   );
+  const [trainedModel, setTrainedModel] = useState<any>(null); // Store trained model for inference
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
 
@@ -876,7 +877,14 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
     });
     tfjsRunner.on('warning', (msg: string) => setLiveWarning(msg));
     tfjsRunner.on('inferenceEnd', () => setIsRunning(false));
-    tfjsRunner.on('complete', () => setIsRunning(false));
+    tfjsRunner.on('complete', () => {
+      setIsRunning(false);
+      // Store the trained model for inference
+      if (mode === 'train') {
+        setTrainedModel(tfjsRunner.getModel());
+        showSuccess('Training Complete!', 'Model trained successfully. You can now use the Digit Drawer for inference.');
+      }
+    });
     tfjsRunner.on('error', (err: Error) => {
       setIsRunning(false);
       setLiveWarning(err.message);
@@ -899,6 +907,36 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
   const handlePause = () => { runner?.pause(); setIsPaused(true); };
   const handleResume = () => { runner?.resume(); setIsPaused(false); };
   const handleStop = () => { runner?.stop(); setIsRunning(false); setIsPaused(false); };
+
+  // Handle inference for digit drawer
+  const handleDigitInference = async (imageData: number[][]): Promise<{ prediction: number; confidence: number }> => {
+    if (!trainedModel) {
+      throw new Error('No trained model available. Please train a model first.');
+    }
+
+    try {
+      // Convert 28x28 image data to tensor
+      const tf = await import('@tensorflow/tfjs');
+      const tensor = tf.tensor2d(imageData.flat(), [1, 784]);
+      
+      // Run inference
+      const prediction = trainedModel.predict(tensor) as any;
+      const predictionData = await prediction.data();
+      
+      // Get the predicted digit and confidence
+      const predictedDigit = Array.from(predictionData).indexOf(Math.max(...predictionData));
+      const confidence = Math.max(...predictionData);
+      
+      // Cleanup
+      tensor.dispose();
+      prediction.dispose();
+      
+      return { prediction: predictedDigit, confidence };
+    } catch (error) {
+      console.error('Inference failed:', error);
+      throw new Error('Failed to run inference on the drawn digit.');
+    }
+  };
 
   return (
     <div
@@ -967,7 +1005,19 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
               />
             );
           },
-        }), [nodeTypes, datasetNodeState, handleDatasetChange, handleCsvUpload]);
+          digitDrawer: (props: any) => {
+            const DigitDrawerNode = nodeTypes.digitDrawer.type || nodeTypes.digitDrawer;
+            return (
+              <DigitDrawerNode
+                {...props}
+                data={{
+                  ...props.data,
+                  onInference: handleDigitInference,
+                }}
+              />
+            );
+          },
+        }), [nodeTypes, datasetNodeState, handleDatasetChange, handleCsvUpload, handleDigitInference]);
         return (
           <ReactFlow
             fitView
@@ -1011,7 +1061,6 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
             onConnect={onConnect}
             onDragOver={onDragOver}
             onDrop={onDrop}
-            onEdgesChange={onEdgesChange}
             onNodeClick={(_, node) => onNodeSelect(node)}
           >
             <Controls />

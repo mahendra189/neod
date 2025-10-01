@@ -52,9 +52,9 @@ const nodeTypesByCategory = [
     ],
   },
   {
-    category: "Schedulers",
+    category: "Testing & Inference",
     nodes: [
-      { type: "scheduler", label: "Scheduler", icon: "lucide:clock", details: "Scheduler Node" },
+      { type: "digitDrawer", label: "Digit Drawer", icon: "lucide:edit", details: "Draw digits for MNIST inference" },
     ],
   },
 ];

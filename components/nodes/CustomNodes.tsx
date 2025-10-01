@@ -15,6 +15,7 @@ import LossNode from './NodeTypes/LossNode';
 import SchedulerNode from './NodeTypes/SchedulerNode';
 import TrainingConfigNode from './NodeTypes/TrainingConfigNode';
 import MetricsNode from './NodeTypes/MetricsNode';
+import DigitDrawerNode from './NodeTypes/DigitDrawerNode';
 
 // Export a map of node types for React Flow
 const nodeTypes = {
@@ -35,6 +36,7 @@ const nodeTypes = {
   scheduler: SchedulerNode,
   trainingConfig: TrainingConfigNode,
   metrics: MetricsNode,
+  digitDrawer: DigitDrawerNode,
 };
 
 

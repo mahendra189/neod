@@ -76,6 +76,12 @@ const nodeTypesByCategory = [
       { type: "cosineannealinglr", label: "CosineAnnealingLR", icon: "lucide:waves", details: "Cosine Annealing LR", keywords: ["cosine", "annealing", "learning", "rate", "warm"], popularity: 75, params: { T_max: 50, eta_min: 0 } },
       { type: "reducelronplateau", label: "ReduceLROnPlateau", icon: "lucide:trending-down", details: "Reduce LR on Plateau", keywords: ["reduce", "plateau", "learning", "rate", "adaptive"], popularity: 80, params: { mode: "min", factor: 0.1, patience: 10, threshold: 1e-4 } },
     ],
+  },
+  {
+    category: "Testing & Inference",
+    nodes: [
+      { type: "digitDrawer", label: "Digit Drawer", icon: "lucide:edit", details: "Draw digits for MNIST inference", keywords: ["digit", "drawer", "mnist", "inference", "test"], popularity: 85 },
+    ],
   }
 ];
 
