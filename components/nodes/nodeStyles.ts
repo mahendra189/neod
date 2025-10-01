@@ -15,6 +15,7 @@ const nodeStyles = {
   algorithm: "rounded-lg min-w-[220px] gradient-multi",
   loss: "rounded-lg min-w-[160px] gradient-red",
   scheduler: "rounded-lg min-w-[180px] gradient-yellow",
+  cnnOutput: "rounded-lg min-w-[280px] border-green-400 bg-green-50",
 };
 
 export default nodeStyles;

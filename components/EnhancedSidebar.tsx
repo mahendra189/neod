@@ -11,6 +11,7 @@ const nodeTypesByCategory = [
     nodes: [
       { type: "textInput", label: "Text Input", icon: "lucide:type", details: "Text Input Node", keywords: ["text", "input", "string"], popularity: 80 },
       { type: "textOutput", label: "Text Output", icon: "lucide:file-text", details: "Text Output Node", keywords: ["text", "output", "result"], popularity: 70 },
+      { type: "cnnOutput", label: "CNN Output", icon: "lucide:image", details: "CNN MNIST Classification Output", keywords: ["cnn", "output", "mnist", "classification", "digits"], popularity: 85 },
     ]
   }
   ,

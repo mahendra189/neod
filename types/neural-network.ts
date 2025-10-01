@@ -34,7 +34,8 @@ export type NodeType =
   | "dropout"
   | "activation"
   | "lstm"
-  | "concat";
+  | "concat"
+  | "cnnOutput";
 
 // Code generation result interface
 export interface CodeGenerationResult {
