@@ -16,6 +16,8 @@ const nodeStyles = {
   loss: "rounded-lg min-w-[160px] gradient-red",
   scheduler: "rounded-lg min-w-[180px] gradient-yellow",
   cnnOutput: "rounded-lg min-w-[280px] border-green-400 bg-green-50",
+  mnistDataset: "rounded-lg min-w-[260px] border-purple-300 bg-purple-50",
+  trainingVisualizer: "rounded-lg min-w-[420px] border-blue-300 bg-blue-50",
 };
 
 export default nodeStyles;

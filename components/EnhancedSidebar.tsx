@@ -19,6 +19,7 @@ const nodeTypesByCategory = [
     category: "Dataset",
     nodes: [
       { type: "dataset", label: "Dataset", icon: "lucide:database", details: "Dataset Node", keywords: ["dataset", "data", "csv"], popularity: 90 },
+      { type: "mnistDataset", label: "MNIST Dataset", icon: "lucide:image", details: "MNIST Handwritten Digits Dataset", keywords: ["mnist", "dataset", "digits", "images", "handwritten"], popularity: 95 },
     ],
   },
 
@@ -82,6 +83,7 @@ const nodeTypesByCategory = [
     category: "Testing & Inference",
     nodes: [
       { type: "digitDrawer", label: "Digit Drawer", icon: "lucide:edit", details: "Draw digits for MNIST inference", keywords: ["digit", "drawer", "mnist", "inference", "test"], popularity: 85 },
+      { type: "trainingVisualizer", label: "Training Visualizer", icon: "lucide:activity", details: "Real-time training metrics and graphs", keywords: ["training", "visualizer", "metrics", "graph", "loss", "accuracy"], popularity: 90 },
     ],
   }
 ];

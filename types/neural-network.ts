@@ -35,7 +35,9 @@ export type NodeType =
   | "activation"
   | "lstm"
   | "concat"
-  | "cnnOutput";
+  | "cnnOutput"
+  | "mnistDataset"
+  | "trainingVisualizer";
 
 // Code generation result interface
 export interface CodeGenerationResult {

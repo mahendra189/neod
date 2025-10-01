@@ -17,6 +17,8 @@ import TrainingConfigNode from './NodeTypes/TrainingConfigNode';
 import MetricsNode from './NodeTypes/MetricsNode';
 import DigitDrawerNode from './NodeTypes/DigitDrawerNode';
 import CNNOutputNode from './NodeTypes/CNNOutputNode';
+import MNISTDatasetNode from './NodeTypes/MNISTDatasetNode';
+import TrainingVisualizerNode from './NodeTypes/TrainingVisualizerNode';
 
 // Export a map of node types for React Flow
 const nodeTypes = {
@@ -39,6 +41,8 @@ const nodeTypes = {
   metrics: MetricsNode,
   digitDrawer: DigitDrawerNode,
   cnnOutput: CNNOutputNode,
+  mnistDataset: MNISTDatasetNode,
+  trainingVisualizer: TrainingVisualizerNode,
 };
 
 

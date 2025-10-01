@@ -29,6 +29,7 @@ import FloatingToolbar from "./FloatingToolbar";
 import SaveProjectModal from "./SaveProjectModal";
 import { useToast } from "./ToastProvider";
 import TfjsRunner from "../runner/tfjsRunner";
+import CNNWorkflowExecutor from "@/utils/cnnWorkflowExecutor";
 import { LineChart, Line, XAxis, YAxis, Tooltip as ChartTooltip, Legend, ResponsiveContainer } from 'recharts';
 import PerformanceAnalysis from "./PerformanceAnalysis";
 
@@ -215,6 +216,8 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
     null,
   );
   const [trainedModel, setTrainedModel] = useState<any>(null); // Store trained model for inference
+  const [cnnExecutor, setCnnExecutor] = useState<CNNWorkflowExecutor | null>(null);
+  const [isCNNWorkflow, setIsCNNWorkflow] = useState(false);
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
 
@@ -835,9 +838,110 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
     }
   };
 
+  // --- CNN Workflow Runner ---
+  const handleCNNRun = async () => {
+    if (isRunning) return;
+    
+    setIsRunning(true);
+    setLiveChartData([]);
+    setCurrentEpoch(0);
+    setLiveWarning(null);
+    setTotalEpochs(10);
+    
+    try {
+      showSuccess('Starting CNN Training', 'Building and training your CNN model...');
+      
+      // Create CNN executor
+      const executor = new CNNWorkflowExecutor(nodes, edges, (state) => {
+        // Update UI based on state
+        setCurrentEpoch(state.currentEpoch);
+        setTotalEpochs(state.totalEpochs);
+        
+        // Update chart data
+        if (state.trainingHistory.length > 0) {
+          const chartData = state.trainingHistory.map(h => ({
+            epoch: h.epoch,
+            loss: h.loss,
+            acc: h.accuracy,
+          }));
+          setLiveChartData(chartData);
+          
+          // Update latest metrics
+          const latest = state.trainingHistory[state.trainingHistory.length - 1];
+          setLiveMetrics({
+            accuracy: latest.accuracy,
+            loss: latest.loss,
+          });
+        }
+        
+        // Update nodes with training data
+        setNodes((nds) => {
+          return nds.map(node => {
+            // Update training visualizer nodes
+            if (node.type === 'trainingVisualizer') {
+              return {
+                ...node,
+                data: {
+                  ...node.data,
+                  trainingHistory: state.trainingHistory,
+                  currentEpoch: state.currentEpoch,
+                  totalEpochs: state.totalEpochs,
+                  isTraining: state.isRunning,
+                },
+              };
+            }
+            
+            // Update MNIST dataset nodes
+            if (node.type === 'mnistDataset') {
+              return {
+                ...node,
+                data: {
+                  ...node.data,
+                  dataLoaded: true,
+                  trainSize: 60000,
+                  testSize: 10000,
+                },
+              };
+            }
+            
+            return node;
+          });
+        });
+      });
+      
+      setCnnExecutor(executor);
+      
+      // Execute the workflow
+      await executor.execute();
+      
+      // Store trained model for inference
+      setTrainedModel(executor.getTrainer());
+      
+      showSuccess('Training Complete!', 'Your CNN model is trained and ready for inference. Try the Digit Drawer!');
+      setIsRunning(false);
+      
+    } catch (error) {
+      console.error('CNN Training Error:', error);
+      showError('Training Failed', error instanceof Error ? error.message : 'Unknown error occurred');
+      setIsRunning(false);
+      setLiveWarning(error instanceof Error ? error.message : 'Training failed');
+    }
+  };
+
   // --- Real-time runner handlers ---
   const handleRun = async (mode: 'train' | 'inference') => {
     if (isRunning) return;
+    
+    // Check if this is a CNN workflow
+    const hasCNNNode = nodes.some(n => n.type === 'algorithm' && n.data?.algorithmType === 'cnn');
+    const hasMNISTDataset = nodes.some(n => n.type === 'mnistDataset');
+    
+    // Use CNN-specific executor if it's a CNN workflow
+    if (hasCNNNode || hasMNISTDataset) {
+      return handleCNNRun();
+    }
+    
+    // Otherwise use the regular TfjsRunner
     setIsRunning(true);
     setInferenceMode(mode === 'inference');
     setLiveChartData([]);
@@ -910,6 +1014,37 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
 
   // Handle inference for digit drawer
   const handleDigitInference = async (imageData: number[][]): Promise<{ prediction: number; confidence: number }> => {
+    // Check if we have a CNN trainer (for CNN workflows)
+    if (cnnExecutor) {
+      try {
+        const result = await cnnExecutor.predict(imageData);
+        
+        // Update CNN output nodes with prediction
+        setNodes((nds) => {
+          return nds.map(node => {
+            if (node.type === 'cnnOutput') {
+              return {
+                ...node,
+                data: {
+                  ...node.data,
+                  predictions: result.probabilities,
+                  predictedClass: result.prediction,
+                  status: `Predicted: ${result.prediction} (${(result.confidence * 100).toFixed(1)}% confidence)`,
+                },
+              };
+            }
+            return node;
+          });
+        });
+        
+        return { prediction: result.prediction, confidence: result.confidence };
+      } catch (error) {
+        console.error('CNN Inference failed:', error);
+        throw new Error('Failed to run CNN inference on the drawn digit.');
+      }
+    }
+    
+    // Fallback to regular trained model
     if (!trainedModel) {
       throw new Error('No trained model available. Please train a model first.');
     }
