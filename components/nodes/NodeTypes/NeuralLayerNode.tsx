@@ -218,13 +218,45 @@ const NeuralLayerNode = ({ data, type, selected, isConnectable }: NeuralLayerPro
     <>
       <div
         className={clsx(
-          'bg-neutral-800 text-white rounded-lg shadow-lg p-3 w-56',
-          selected && 'ring-2 ring-blue-400'
+          'text-white rounded-lg shadow-lg p-3 w-56',
+          selected && 'ring-2 ring-blue-400',
+          data.isTraining ? 'bg-orange-800 animate-pulse' : 'bg-neutral-800',
+          data.trainingComplete ? 'bg-green-800' : '',
         )}
       >
         <Handle type="target" position={Position.Left} isConnectable={isConnectable} />
         <div className="flex flex-col items-center gap-1">
-          <span className="font-bold text-xs mb-1">Neural Network</span>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="font-bold text-xs">Neural Network</span>
+            {data.isTraining && (
+              <div className="flex items-center gap-1">
+                <div className="w-2 h-2 bg-orange-300 rounded-full animate-ping"></div>
+                <span className="text-xs font-semibold">TRAINING</span>
+              </div>
+            )}
+            {data.trainingComplete && (
+              <div className="flex items-center gap-1">
+                <div className="w-2 h-2 bg-green-300 rounded-full"></div>
+                <span className="text-xs font-semibold">TRAINED</span>
+              </div>
+            )}
+          </div>
+          
+          {/* Training Progress */}
+          {data.isTraining && data.currentEpoch && data.totalEpochs && (
+            <div className="mb-2 w-full">
+              <div className="text-xs text-white text-center mb-1">
+                Epoch {data.currentEpoch}/{data.totalEpochs}
+              </div>
+              <div className="w-full bg-white/20 rounded-full h-1">
+                <div 
+                  className="bg-white h-1 rounded-full transition-all duration-300"
+                  style={{ width: `${data.trainingProgress || 0}%` }}
+                ></div>
+              </div>
+            </div>
+          )}
+          
           <div className="flex flex-col items-center gap-0.5">
             {stackedSummary}
           </div>

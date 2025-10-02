@@ -182,9 +182,11 @@ const AlgorithmNode = ({ data, selected, isConnectable }: NodeProps) => {
     <>
       <div
         className={clsx(
-          "bg-gradient-to-r from-blue-500 to-blue-700 text-white rounded-lg shadow-lg border-2",
+          "bg-gradient-to-r text-white rounded-lg shadow-lg border-2",
           "min-w-[180px] transition-all duration-200 p-3",
           selected ? "border-white ring-2 ring-blue-300" : "border-transparent",
+          data.isTraining ? "from-orange-500 to-red-600 animate-pulse" : "from-blue-500 to-blue-700",
+          data.trainingComplete ? "from-green-500 to-green-700" : "",
         )}
         onDoubleClick={() => setShowModal(true)}
       >
@@ -198,7 +200,65 @@ const AlgorithmNode = ({ data, selected, isConnectable }: NodeProps) => {
           <div className="flex items-center gap-2">
             {data.icon && <Icon className="w-5 h-5" icon={data.icon} />}
             <span className="font-medium capitalize">{algorithmType} Algorithm</span>
+            {data.isTraining && (
+              <div className="ml-auto flex items-center gap-1">
+                <div className="w-2 h-2 bg-orange-300 rounded-full animate-ping"></div>
+                <span className="text-xs font-semibold">TRAINING</span>
+              </div>
+            )}
+            {data.trainingComplete && (
+              <div className="ml-auto flex items-center gap-1">
+                <div className="w-2 h-2 bg-green-300 rounded-full"></div>
+                <span className="text-xs font-semibold">TRAINED</span>
+              </div>
+            )}
           </div>
+          
+          {/* Training Progress */}
+          {data.isTraining && data.currentEpoch && data.totalEpochs && (
+            <div className="mt-2">
+              <div className="flex justify-between text-xs mb-1">
+                <span>Epoch {data.currentEpoch}/{data.totalEpochs}</span>
+                <span>{Math.round(data.trainingProgress || 0)}%</span>
+              </div>
+              <div className="w-full bg-white/20 rounded-full h-2">
+                <div 
+                  className="bg-white h-2 rounded-full transition-all duration-300"
+                  style={{ width: `${data.trainingProgress || 0}%` }}
+                ></div>
+              </div>
+              {data.trainingMetrics && (
+                <div className="mt-1 text-xs space-y-1">
+                  <div className="flex justify-between">
+                    <span>Loss:</span>
+                    <span>{data.trainingMetrics.loss?.toFixed(4) || 'N/A'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Acc:</span>
+                    <span>{data.trainingMetrics.accuracy?.toFixed(4) || 'N/A'}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+          
+          {/* Training Complete Summary */}
+          {data.trainingComplete && data.trainingMetrics && (
+            <div className="mt-2 p-2 bg-white/10 rounded text-xs">
+              <div className="font-semibold mb-1">Final Results:</div>
+              <div className="space-y-1">
+                <div className="flex justify-between">
+                  <span>Loss:</span>
+                  <span>{data.trainingMetrics.loss?.toFixed(4) || 'N/A'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Accuracy:</span>
+                  <span>{data.trainingMetrics.accuracy?.toFixed(4) || 'N/A'}</span>
+                </div>
+              </div>
+            </div>
+          )}
+          
           {algorithmType === "cnn" && Array.isArray(cnnLayers) && cnnLayers.length > 0 && (
             <div className="mt-2">
               <div className="flex gap-1 overflow-x-auto pb-1">

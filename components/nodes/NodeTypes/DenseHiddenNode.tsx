@@ -25,8 +25,10 @@ const DenseHiddenNode = ({ data, type, selected, isConnectable }: NodeProps) => 
   return (
     <div
       className={clsx(
-        'w-40 rounded-lg flex flex-col items-center justify-center shadow-md relative cursor-pointer p-4 bg-purple-600',
-        selected ? 'ring-2 ring-purple-300 shadow-lg' : ''
+        'w-40 rounded-lg flex flex-col items-center justify-center shadow-md relative cursor-pointer p-4',
+        selected ? 'ring-2 ring-purple-300 shadow-lg' : '',
+        data.isTraining ? 'bg-orange-600 animate-pulse' : 'bg-purple-600',
+        data.trainingComplete ? 'bg-green-600' : '',
       )}
     >
       <Handle
@@ -35,7 +37,35 @@ const DenseHiddenNode = ({ data, type, selected, isConnectable }: NodeProps) => 
         position={Position.Left}
         type="target"
       />
-      <div className="font-bold text-white mb-2 text-sm">Dense/Hidden Layers</div>
+      <div className="font-bold text-white mb-2 text-sm flex items-center gap-2">
+        Dense/Hidden Layers
+        {data.isTraining && (
+          <div className="flex items-center gap-1">
+            <div className="w-2 h-2 bg-orange-300 rounded-full animate-ping"></div>
+          </div>
+        )}
+        {data.trainingComplete && (
+          <div className="flex items-center gap-1">
+            <div className="w-2 h-2 bg-green-300 rounded-full"></div>
+          </div>
+        )}
+      </div>
+      
+      {/* Training Progress */}
+      {data.isTraining && data.currentEpoch && data.totalEpochs && (
+        <div className="mb-2 w-full">
+          <div className="text-xs text-white text-center mb-1">
+            Epoch {data.currentEpoch}/{data.totalEpochs}
+          </div>
+          <div className="w-full bg-white/20 rounded-full h-1">
+            <div 
+              className="bg-white h-1 rounded-full transition-all duration-300"
+              style={{ width: `${data.trainingProgress || 0}%` }}
+            ></div>
+          </div>
+        </div>
+      )}
+      
       <div className="flex flex-col gap-2">
         <div className="flex items-center gap-2">
           <span className="text-xs text-white">Layers</span>

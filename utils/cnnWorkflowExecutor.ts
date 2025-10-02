@@ -143,6 +143,47 @@ export class CNNWorkflowExecutor {
   }
 
   /**
+   * Update CNN algorithm node with training progress
+   */
+  private updateCNNAlgorithmNode(epoch: number, logs: any) {
+    const cnnNodes = this.findNodesByType('algorithm');
+    
+    cnnNodes.forEach(node => {
+      this.updateNodeData(node.id, {
+        currentEpoch: epoch + 1,
+        totalEpochs: this.state.totalEpochs,
+        isTraining: true,
+        trainingMetrics: {
+          loss: logs.loss,
+          accuracy: logs.acc,
+          valLoss: logs.val_loss,
+          valAccuracy: logs.val_acc,
+        },
+        trainingProgress: ((epoch + 1) / this.state.totalEpochs) * 100,
+      });
+    });
+  }
+
+  /**
+   * Update all neural network nodes with training progress
+   */
+  private updateNeuralNetworkNodes(epoch: number, logs: any) {
+    const neuralNodeTypes = ['neuralLayer', 'denseHidden'];
+    
+    neuralNodeTypes.forEach(nodeType => {
+      const nodes = this.findNodesByType(nodeType);
+      nodes.forEach(node => {
+        this.updateNodeData(node.id, {
+          currentEpoch: epoch + 1,
+          totalEpochs: this.state.totalEpochs,
+          isTraining: true,
+          trainingProgress: ((epoch + 1) / this.state.totalEpochs) * 100,
+        });
+      });
+    });
+  }
+
+  /**
    * Update state and notify listeners
    */
   private updateState(updates: Partial<WorkflowExecutionState>) {
@@ -218,6 +259,12 @@ export class CNNWorkflowExecutor {
 
             // Update visualizer nodes
             this.updateTrainingVisualizer(epoch, logs);
+            
+            // Update CNN algorithm node with real-time training progress
+            this.updateCNNAlgorithmNode(epoch, logs);
+            
+            // Update all neural network nodes with training progress
+            this.updateNeuralNetworkNodes(epoch, logs);
           },
           onTrainEnd: () => {
             console.log('Training ended');
@@ -235,6 +282,27 @@ export class CNNWorkflowExecutor {
       visualizerNodes.forEach(node => {
         this.updateNodeData(node.id, {
           isTraining: false,
+        });
+      });
+
+      // Mark CNN algorithm nodes as training complete
+      const cnnNodes = this.findNodesByType('algorithm');
+      cnnNodes.forEach(node => {
+        this.updateNodeData(node.id, {
+          isTraining: false,
+          trainingComplete: true,
+        });
+      });
+
+      // Mark all neural network nodes as training complete
+      const neuralNodeTypes = ['neuralLayer', 'denseHidden'];
+      neuralNodeTypes.forEach(nodeType => {
+        const nodes = this.findNodesByType(nodeType);
+        nodes.forEach(node => {
+          this.updateNodeData(node.id, {
+            isTraining: false,
+            trainingComplete: true,
+          });
         });
       });
 
