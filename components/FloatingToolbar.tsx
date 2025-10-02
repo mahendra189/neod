@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Card, CardBody, Button, Tooltip } from "@heroui/react";
-import { Network, Code, Settings, X, Save, Play } from "lucide-react";
+import { Network, Code, Settings, X, Save, Play, Brain } from "lucide-react";
 import { Node, Edge } from "reactflow";
 
 import ModelTemplates from "./ModelTemplates";
@@ -10,6 +10,66 @@ import ProjectManager from "./ProjectManager";
 import { ModelRunner } from "./ModelRunner";
 
 import { SavedProject } from "@/utils/projectStorage";
+
+// CNN Train Button Component
+const CNNTrainButton: React.FC<{ nodes: Node[]; edges: Edge[]; compact?: boolean }> = ({ nodes, edges, compact = true }) => {
+  const [isTraining, setIsTraining] = useState(false);
+
+  // Check if this is a CNN workflow
+  const hasCNNNode = nodes.some(n => n.type === 'algorithm' && n.data?.algorithmType === 'cnn');
+  const hasMNISTDataset = nodes.some(n => n.type === 'mnistDataset');
+
+  // Only show if CNN workflow is detected
+  if (!hasCNNNode && !hasMNISTDataset) {
+    return null;
+  }
+
+  const handleTrain = async () => {
+    try {
+      setIsTraining(true);
+      
+      // Call the global CNN training function
+      if (typeof window !== 'undefined' && (window as any).trainCNNModel) {
+        await (window as any).trainCNNModel();
+      } else {
+        console.error('CNN training function not available');
+      }
+    } catch (error) {
+      console.error('CNN training failed:', error);
+    } finally {
+      setIsTraining(false);
+    }
+  };
+
+  if (compact) {
+    return (
+      <Tooltip content="Train CNN Model">
+        <Button
+          isIconOnly
+          className="shadow-lg"
+          color="warning"
+          variant="flat"
+          onClick={handleTrain}
+          disabled={isTraining}
+        >
+          <Brain className="w-4 h-4" />
+        </Button>
+      </Tooltip>
+    );
+  }
+
+  return (
+    <Button
+      onClick={handleTrain}
+      className="w-full flex items-center justify-center gap-2"
+      color="warning"
+      disabled={isTraining}
+    >
+      <Brain className="w-4 h-4" />
+      {isTraining ? 'Training CNN...' : 'Train CNN'}
+    </Button>
+  );
+};
 
 interface FloatingToolbarProps {
   nodes: Node[];
@@ -84,6 +144,8 @@ const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
           </div>
         </Tooltip>
 
+        <CNNTrainButton nodes={nodes} edges={edges} />
+
         {/* Collapsible Menu Toggle */}
         <Tooltip
           content={isExpanded ? "Hide Tools" : "More Tools"}
@@ -148,6 +210,7 @@ const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
                   />
                   <PerformanceAnalysis edges={edges} nodes={nodes} />
                   <ModelRunner />
+                  <CNNTrainButton nodes={nodes} edges={edges} compact={false} />
                 </div>
               </div>
             </div>
