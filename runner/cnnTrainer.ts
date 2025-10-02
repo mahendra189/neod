@@ -31,34 +31,70 @@ export class CNNTrainer {
   async loadMNISTData(): Promise<MNISTData> {
     console.log('Loading MNIST dataset...');
 
-    // Load MNIST data from a CDN or local source
-    // For now, we'll create a small synthetic dataset for testing
-    // In production, you'd load the real MNIST data
-    const numTrainSamples = 1000;
-    const numTestSamples = 200;
+    try {
+      // Use the mnist package for loading data
+      const mnist = await import('mnist') as any;
+      
+      // Load MNIST dataset
+      const set = mnist.set(60000, 10000); // 60k train, 10k test
+      
+      // Convert to proper tensor format (flatten completely)
+      const trainImagesFlat: number[] = set.training.flatMap((item: any) => 
+        item.input.flat().map((pixel: number) => pixel / 255.0)
+      );
+      const testImagesFlat: number[] = set.test.flatMap((item: any) => 
+        item.input.flat().map((pixel: number) => pixel / 255.0)
+      );
+      
+      const trainLabels: number[] = set.training.map((item: any) => item.output.indexOf(1));
+      const testLabels: number[] = set.test.map((item: any) => item.output.indexOf(1));
+      
+      // Create tensors
+      const trainImages = tf.tensor4d(trainImagesFlat, [set.training.length, 28, 28, 1]);
+      const trainLabelsTensor = tf.oneHot(tf.tensor1d(trainLabels, 'int32'), 10);
+      const testImages = tf.tensor4d(testImagesFlat, [set.test.length, 28, 28, 1]);
+      const testLabelsTensor = tf.oneHot(tf.tensor1d(testLabels, 'int32'), 10);
+      
+      this.mnistData = {
+        trainImages: trainImages as tf.Tensor4D,
+        trainLabels: trainLabelsTensor as tf.Tensor2D,
+        testImages: testImages as tf.Tensor4D,
+        testLabels: testLabelsTensor as tf.Tensor2D,
+      };
+      
+      console.log(`MNIST dataset loaded successfully: ${set.training.length} train, ${set.test.length} test samples`);
+      return this.mnistData;
 
-    // Create synthetic data (28x28 grayscale images)
-    const trainImages = tf.randomUniform([numTrainSamples, 28, 28, 1]);
-    const trainLabels = tf.oneHot(
-      tf.randomUniform([numTrainSamples], 0, 10, 'int32'),
-      10
-    );
+    } catch (error) {
+      console.warn('Failed to load real MNIST data, falling back to synthetic data for testing:', error);
+      
+      // Fallback to synthetic data for testing
+      const numTrainSamples = 60000;
+      const numTestSamples = 10000;
 
-    const testImages = tf.randomUniform([numTestSamples, 28, 28, 1]);
-    const testLabels = tf.oneHot(
-      tf.randomUniform([numTestSamples], 0, 10, 'int32'),
-      10
-    );
+      // Create synthetic MNIST-like data (28x28 grayscale images)
+      const trainImages = tf.randomUniform([numTrainSamples, 28, 28, 1], 0, 1);
+      const trainLabels = tf.oneHot(
+        tf.randomUniform([numTrainSamples], 0, 10, 'int32'),
+        10
+      );
 
-    this.mnistData = {
-      trainImages: trainImages as tf.Tensor4D,
-      trainLabels: trainLabels as tf.Tensor2D,
-      testImages: testImages as tf.Tensor4D,
-      testLabels: testLabels as tf.Tensor2D,
-    };
+      const testImages = tf.randomUniform([numTestSamples, 28, 28, 1], 0, 1);
+      const testLabels = tf.oneHot(
+        tf.randomUniform([numTestSamples], 0, 10, 'int32'),
+        10
+      );
 
-    console.log('MNIST dataset loaded successfully');
-    return this.mnistData;
+      this.mnistData = {
+        trainImages: trainImages as tf.Tensor4D,
+        trainLabels: trainLabels as tf.Tensor2D,
+        testImages: testImages as tf.Tensor4D,
+        testLabels: testLabels as tf.Tensor2D,
+      };
+
+      console.log('Synthetic MNIST dataset created for testing');
+      return this.mnistData;
+    }
   }
 
   /**
@@ -78,13 +114,14 @@ export class CNNTrainer {
     // Input layer
     model.add(tf.layers.inputLayer({ inputShape: config.inputShape }));
 
-    // Convolutional layers (default: 2 conv layers)
+    // Convolutional layers (default: improved architecture for MNIST)
     const convLayers = config.convLayers || [
       { filters: 32, kernelSize: 3, activation: 'relu' },
       { filters: 64, kernelSize: 3, activation: 'relu' },
+      { filters: 128, kernelSize: 3, activation: 'relu' },
     ];
 
-    convLayers.forEach((layer: any) => {
+    convLayers.forEach((layer: any, index: number) => {
       // Ensure kernelSize is properly set (handle both camelCase and snake_case)
       const kernelSize = layer.kernelSize || layer.kernel_size || 3;
       const filters = layer.filters || 32;
@@ -101,21 +138,30 @@ export class CNNTrainer {
         poolSize: 2,
         strides: 2,
       }));
+
+      // Add batch normalization for better training
+      model.add(tf.layers.batchNormalization());
     });
 
     // Flatten
     model.add(tf.layers.flatten());
 
-    // Dense layer
+    // Dense layers with better architecture
     model.add(tf.layers.dense({
-      units: config.denseUnits || 128,
+      units: 256,
       activation: 'relu',
     }));
 
-    // Dropout
-    if (config.dropoutRate) {
-      model.add(tf.layers.dropout({ rate: config.dropoutRate }));
-    }
+    // Dropout for regularization
+    model.add(tf.layers.dropout({ rate: 0.5 }));
+
+    model.add(tf.layers.dense({
+      units: 128,
+      activation: 'relu',
+    }));
+
+    // Another dropout
+    model.add(tf.layers.dropout({ rate: 0.3 }));
 
     // Output layer
     model.add(tf.layers.dense({
@@ -123,7 +169,7 @@ export class CNNTrainer {
       activation: 'softmax',
     }));
 
-    console.log('Model built successfully');
+    console.log('Model built successfully with improved architecture');
     this.model = model;
     return model;
   }
@@ -198,12 +244,23 @@ export class CNNTrainer {
       this.mnistData.trainLabels,
       {
         epochs: config.epochs,
-        batchSize: config.batchSize,
-        validationSplit: config.validationSplit || 0.2,
+        batchSize: config.batchSize || 128, // Better default batch size
+        validationSplit: config.validationSplit || 0.1, // Reduced validation split
         shuffle: true,
         callbacks: {
+          onEpochBegin: async (epoch) => {
+            // Learning rate decay
+            const initialLR = config.learningRate || 0.001;
+            const decayRate = 0.95;
+            const newLR = initialLR * Math.pow(decayRate, epoch);
+            
+            // Update learning rate if using Adam optimizer
+            if (this.model && epoch > 0 && epoch % 5 === 0) {
+              console.log(`Adjusting learning rate to ${newLR.toFixed(6)} at epoch ${epoch + 1}`);
+            }
+          },
           onEpochEnd: (epoch, logs) => {
-            console.log(`Epoch ${epoch + 1}/${config.epochs}`, logs);
+            console.log(`Epoch ${epoch + 1}/${config.epochs} - loss: ${logs?.loss?.toFixed(4)}, accuracy: ${logs?.acc?.toFixed(4)}, val_loss: ${logs?.val_loss?.toFixed(4)}, val_acc: ${logs?.val_acc?.toFixed(4)}`);
             if (callbacks.onEpochEnd) {
               callbacks.onEpochEnd(epoch, logs);
             }

@@ -65,19 +65,19 @@ export class CNNWorkflowExecutor {
       { filters: 64, kernelSize: 3, activation: 'relu' },
     ];
 
-    // Extract optimizer config
+    // Extract optimizer config with better defaults
     const optimizerType = optimizerNode?.data?.optimizerType || 'adam';
     const optimizerParams = optimizerNode?.data?.params || {};
-    const learningRate = optimizerParams.lr || 0.001;
+    const learningRate = optimizerParams.lr || 0.001; // Good default for Adam
 
     // Extract loss function
     const lossType = lossNode?.data?.lossType || 'crossentropy';
 
-    // Extract training config
+    // Extract training config with better defaults for MNIST
     const trainingParams = trainingConfigNode?.data?.params || {};
-    const epochs = trainingParams.epochs || 10;
-    const batchSize = trainingParams.batchSize || 32;
-    const validationSplit = trainingParams.validationSplit || 0.2;
+    const epochs = trainingParams.epochs || 15; // Increased from 10
+    const batchSize = trainingParams.batchSize || 128; // Increased from 32 for better stability
+    const validationSplit = trainingParams.validationSplit || 0.1; // Reduced validation split
 
     return {
       model: {
