@@ -1,3 +1,4 @@
+import "d3-transition";
 import React, { useCallback, useRef, useState, useEffect, useMemo } from "react";
 import { Copy, Download, X } from "lucide-react";
 import ReactFlow, {

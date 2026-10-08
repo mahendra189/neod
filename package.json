@@ -29,6 +29,8 @@
     "@vercel/analytics": "^1.5.0",
     "@vercel/speed-insights": "^1.2.0",
     "clsx": "2.1.1",
+    "d3-selection": "^3.0.0",
+    "d3-transition": "^3.0.1",
     "dagre": "^0.8.5",
     "framer-motion": "11.18.2",
     "intl-messageformat": "10.7.16",
@@ -69,5 +71,19 @@
     "tailwind-variants": "2.0.1",
     "tailwindcss": "4.1.11",
     "typescript": "5.6.3"
+  },
+  "overrides": {
+    "d3-selection": "^3.0.0",
+    "d3-transition": "^3.0.1"
+  },
+  "resolutions": {
+    "d3-selection": "^3.0.0",
+    "d3-transition": "^3.0.1"
+  },
+  "pnpm": {
+    "overrides": {
+      "d3-selection": "^3.0.0",
+      "d3-transition": "^3.0.1"
+    }
   }
 }
