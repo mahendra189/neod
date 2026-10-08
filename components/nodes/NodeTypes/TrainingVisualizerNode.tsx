@@ -125,7 +125,7 @@ const TrainingVisualizerNode = ({ data, selected, isConnectable }: TrainingVisua
                   />
                   <Tooltip 
                     contentStyle={{ fontSize: 12 }}
-                    formatter={(value: number) => value.toFixed(4)}
+                    formatter={(value: any) => (typeof value === 'number' ? value.toFixed(4) : value)}
                   />
                   <Line 
                     type="monotone" 
@@ -167,7 +167,7 @@ const TrainingVisualizerNode = ({ data, selected, isConnectable }: TrainingVisua
                   />
                   <Tooltip 
                     contentStyle={{ fontSize: 12 }}
-                    formatter={(value: number) => `${(value * 100).toFixed(2)}%`}
+                    formatter={(value: any) => (typeof value === 'number' ? `${(value * 100).toFixed(2)}%` : value)}
                   />
                   <Line 
                     type="monotone" 
