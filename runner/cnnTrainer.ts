@@ -32,19 +32,29 @@ export class CNNTrainer {
     console.log('Loading MNIST dataset...');
 
     try {
-      // Use the mnist package for loading data
+      // Use the mnist package for loading data (5000 train, 1000 test for fast and stable in-browser training)
       const mnist = await import('mnist') as any;
       
-      // Load MNIST dataset
-      const set = mnist.set(60000, 10000); // 60k train, 10k test
+      const numTrain = 5000;
+      const numTest = 1000;
+      const set = mnist.set(numTrain, numTest);
       
-      // Convert to proper tensor format (flatten completely)
-      const trainImagesFlat: number[] = set.training.flatMap((item: any) => 
-        item.input.flat().map((pixel: number) => pixel / 255.0)
-      );
-      const testImagesFlat: number[] = set.test.flatMap((item: any) => 
-        item.input.flat().map((pixel: number) => pixel / 255.0)
-      );
+      // Convert to proper tensor format using Float32Array
+      const trainImagesFlat = new Float32Array(set.training.length * 784);
+      set.training.forEach((item: any, i: number) => {
+        const flatPixels = item.input.flat();
+        for (let j = 0; j < 784; j++) {
+          trainImagesFlat[i * 784 + j] = (flatPixels[j] || 0) / 255.0;
+        }
+      });
+
+      const testImagesFlat = new Float32Array(set.test.length * 784);
+      set.test.forEach((item: any, i: number) => {
+        const flatPixels = item.input.flat();
+        for (let j = 0; j < 784; j++) {
+          testImagesFlat[i * 784 + j] = (flatPixels[j] || 0) / 255.0;
+        }
+      });
       
       const trainLabels: number[] = set.training.map((item: any) => item.output.indexOf(1));
       const testLabels: number[] = set.test.map((item: any) => item.output.indexOf(1));
@@ -69,8 +79,8 @@ export class CNNTrainer {
       console.warn('Failed to load real MNIST data, falling back to synthetic data for testing:', error);
       
       // Fallback to synthetic data for testing
-      const numTrainSamples = 60000;
-      const numTestSamples = 10000;
+      const numTrainSamples = 5000;
+      const numTestSamples = 1000;
 
       // Create synthetic MNIST-like data (28x28 grayscale images)
       const trainImages = tf.randomUniform([numTrainSamples, 28, 28, 1], 0, 1);
@@ -407,6 +417,13 @@ export class CNNTrainer {
     });
 
     return summary;
+  }
+
+  /**
+   * Get the underlying trained model
+   */
+  getModel(): tf.LayersModel | null {
+    return this.model;
   }
 
   /**

@@ -227,9 +227,9 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
   // Expose CNN training function globally for easy access
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      (window as any).trainCNNModel = () => {
+      (window as any).trainCNNModel = async () => {
         console.log('🚀 Starting CNN Training from global function...');
-        handleCNNRun();
+        await handleCNNRun();
       };
     }
     return () => {
@@ -925,12 +925,11 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
         });
       });
       
-      setCnnExecutor(executor);
-      
       // Execute the workflow
       await executor.execute();
       
-      // Store trained model for inference
+      // Store trained model and executor for inference
+      setCnnExecutor(executor);
       setTrainedModel(executor.getTrainer());
       
       showSuccess('Training Complete!', 'Your CNN model is trained and ready for inference. Try the Digit Drawer!');
@@ -1054,9 +1053,9 @@ const FlowCanvas: React.FC<FlowCanvasProps> = ({
         });
         
         return { prediction: result.prediction, confidence: result.confidence };
-      } catch (error) {
+      } catch (error: any) {
         console.error('CNN Inference failed:', error);
-        throw new Error('Failed to run CNN inference on the drawn digit.');
+        throw new Error(error?.message || 'Failed to run CNN inference on the drawn digit.');
       }
     }
     

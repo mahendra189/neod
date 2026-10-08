@@ -317,6 +317,7 @@ export class CNNWorkflowExecutor {
         isRunning: false,
         error: error instanceof Error ? error.message : 'Unknown error',
       });
+      throw error;
     }
   }
 
@@ -335,6 +336,9 @@ export class CNNWorkflowExecutor {
     confidence: number;
     probabilities: number[];
   }> {
+    if (!this.trainer.getModel()) {
+      throw new Error('CNN model is not trained yet. Please train the model first by clicking "Train CNN".');
+    }
     return await this.trainer.predict(imageData);
   }
 
