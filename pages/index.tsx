@@ -1,6 +1,4 @@
-import { Button } from "@heroui/button";
-import { Card, CardHeader, CardBody } from "@heroui/card";
-import { Chip } from "@heroui/chip";
+import { Button, Card, CardHeader, CardBody, Chip } from "@heroui/react";
 import { useRouter } from "next/router";
 import {
   Brain,
