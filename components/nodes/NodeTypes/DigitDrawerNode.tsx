@@ -28,26 +28,32 @@ const DigitDrawerNode = ({ data, selected, isConnectable }: DigitDrawerNodeProps
 
   // Initialize canvas
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!showModal) return;
 
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    const timer = setTimeout(() => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
 
-    // Set canvas size
-    canvas.width = CANVAS_SIZE;
-    canvas.height = CANVAS_SIZE;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
 
-    // Fill with white background
-    ctx.fillStyle = 'white';
-    ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+      // Set canvas size
+      canvas.width = CANVAS_SIZE;
+      canvas.height = CANVAS_SIZE;
 
-    // Set drawing properties
-    ctx.lineWidth = 12;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    ctx.strokeStyle = 'black';
-  }, []);
+      // Fill with white background
+      ctx.fillStyle = 'white';
+      ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+
+      // Set drawing properties
+      ctx.lineWidth = 12;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.strokeStyle = 'black';
+    }, 50);
+
+    return () => clearTimeout(timer);
+  }, [showModal]);
 
   const getCanvasCoordinates = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
@@ -145,15 +151,20 @@ const DigitDrawerNode = ({ data, selected, isConnectable }: DigitDrawerNodeProps
       return;
     }
 
+    const imageData = getImageData();
+    if (!imageData || imageData.length === 0) {
+      setShowModal(true);
+      return;
+    }
+
     setIsProcessing(true);
     try {
-      const imageData = getImageData();
       const result = await data.onInference(imageData);
       setPrediction(result.prediction);
       setConfidence(result.confidence);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Inference failed:', error);
-      alert('Inference failed. Please check your model connection.');
+      alert(error?.message || 'Inference failed. Please check your model connection.');
     } finally {
       setIsProcessing(false);
     }

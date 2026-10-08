@@ -317,7 +317,7 @@ export class CNNTrainer {
   /**
    * Make prediction on a single image
    */
-  async predict(imageData: number[][] | tf.Tensor): Promise<{
+  async predict(imageData: number[][] | number[] | tf.Tensor): Promise<{
     prediction: number;
     confidence: number;
     probabilities: number[];
@@ -329,10 +329,23 @@ export class CNNTrainer {
     let inputTensor: tf.Tensor;
 
     if (Array.isArray(imageData)) {
-      // Convert 2D array to tensor and normalize
+      if (!imageData || imageData.length === 0) {
+        throw new Error('No image data provided for prediction. Please draw a digit first.');
+      }
+
+      // Convert array to tensor and normalize
       inputTensor = tf.tidy(() => {
-        const tensor = tf.tensor2d(imageData);
-        const normalized = tensor.div(255.0);
+        let tensor: tf.Tensor;
+        if (typeof imageData[0] === 'number') {
+          tensor = tf.tensor2d(imageData as number[], [28, 28]);
+        } else if (Array.isArray(imageData[0]) && (imageData[0] as number[]).length > 0) {
+          tensor = tf.tensor2d(imageData as number[][]);
+        } else {
+          throw new Error('Invalid image data dimensions.');
+        }
+
+        const maxVal = tensor.max().dataSync()[0];
+        const normalized = maxVal > 1.0 ? tensor.div(255.0) : tensor;
         const reshaped = normalized.reshape([1, 28, 28, 1]);
         return reshaped;
       });
