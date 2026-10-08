@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Button, Tooltip } from "@heroui/react";
-import { Network, Save, Brain } from "lucide-react";
+import { Network, Save, Brain, Code } from "lucide-react";
 import { Node, Edge } from "reactflow";
 
 import { SavedProject } from "@/utils/projectStorage";
@@ -71,6 +71,11 @@ interface FloatingToolbarProps {
   onLayout: () => void;
   onSaveProject: () => void;
   currentProject?: SavedProject | null;
+  onLoadTemplate?: (template: any) => void;
+  onLoadProject?: (project: any) => void;
+  onIssueSelect?: (nodeId: string) => void;
+  onToggleCodePanel?: () => void;
+  showCodePanel?: boolean;
 }
 
 const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
@@ -79,6 +84,8 @@ const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
   onLayout,
   onSaveProject,
   currentProject,
+  onToggleCodePanel,
+  showCodePanel,
 }) => {
 
   return (
@@ -108,6 +115,20 @@ const FloatingToolbar: React.FC<FloatingToolbarProps> = ({
             <Network className="w-4 h-4" />
           </Button>
         </Tooltip>
+
+        {onToggleCodePanel && (
+          <Tooltip content={showCodePanel ? "Hide Code Panel" : "Generate Code"}>
+            <Button
+              isIconOnly
+              className="shadow-lg"
+              color="primary"
+              variant={showCodePanel ? "solid" : "flat"}
+              onClick={onToggleCodePanel}
+            >
+              <Code className="w-4 h-4" />
+            </Button>
+          </Tooltip>
+        )}
 
         <CNNTrainButton nodes={nodes} edges={edges} />
       </div>

@@ -227,7 +227,7 @@ const DigitDrawerNode = ({ data, selected, isConnectable }: DigitDrawerNodeProps
           <ModalBody>
             <div className="flex flex-col items-center gap-4">
               <div className="text-sm text-gray-600 text-center">
-                Draw a digit (0-9) on the canvas below, then click "Run Inference" to test your trained CNN model.
+                Draw a digit (0-9) on the canvas below, then click &quot;Run Inference&quot; to test your trained CNN model.
               </div>
 
               <div className="border-2 border-gray-300 rounded-lg p-2">

@@ -49,6 +49,156 @@ const activationOptions = [
   { value: 'none', label: 'None' },
 ];
 
+const NetworkVisualization = ({ layers }: { layers: Layer[] }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [canvasWidth, setCanvasWidth] = useState(0);
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (containerRef.current) {
+        setCanvasWidth(containerRef.current.offsetWidth);
+      }
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  function getNeuronPositions(
+    count: number,
+    neuronGap: number,
+    visHeight: number
+  ): { y: number; type: 'neuron' | 'dots' }[] {
+    if (count <= 8) {
+      const totalHeight = (count - 1) * neuronGap;
+      return Array.from({ length: count }, (_, i) => ({
+        y: visHeight / 2 - totalHeight / 2 + i * neuronGap,
+        type: 'neuron',
+      }));
+    }
+    // >10 neurons → first 5, dots, last 5
+    const positions = [];
+    const totalHeight = (10 - 1) * neuronGap;
+    const startY = visHeight / 2 - totalHeight / 2;
+    for (let i = 0; i < 4; i++) {
+      positions.push({ y: startY + i * neuronGap, type: 'neuron' as 'neuron' });
+    }
+    positions.push({ y: startY + 5 * neuronGap, type: 'dots' as 'dots' });
+    for (let i = 0; i < 4; i++) {
+      positions.push({ y: startY + (6 + i) * neuronGap, type: 'neuron' as 'neuron' });
+    }
+    return positions;
+  }
+
+  // Layout constants
+  const circleSize = 28;
+  const neuronGap = 36;
+  const visHeight = 500;
+
+  // We'll use a flex container to center the neuron columns horizontally
+  // and measure their positions for edge drawing
+  const neuronColRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const [colCenters, setColCenters] = useState<number[]>([]);
+
+  useEffect(() => {
+    // After render, measure the center X of each neuron column
+    if (!containerRef.current) return;
+    const containerRect = containerRef.current.getBoundingClientRect();
+    const centers = neuronColRefs.current.map((ref) => {
+      if (!ref) return 0;
+      const rect = ref.getBoundingClientRect();
+      return rect.left - containerRect.left + rect.width / 2;
+    });
+    setColCenters(centers);
+  }, [layers, canvasWidth]);
+
+  return (
+    <div ref={containerRef} className="relative w-full h-full">
+      {/* Edges */}
+      <div className="absolute inset-0 pointer-events-none">
+        {colCenters.length === layers.length &&
+          layers.map((layer: any, idx: number) => {
+            if (idx === layers.length - 1) return null;
+            const nextLayer = layers[idx + 1];
+            const x1 = colCenters[idx];
+            const x2 = colCenters[idx + 1];
+            const positions1 = getNeuronPositions(layer.neurons, neuronGap, visHeight);
+            const positions2 = getNeuronPositions(nextLayer.neurons, neuronGap, visHeight);
+            return positions1.map((p1, nidx) => {
+              if (p1.type === 'dots') return null;
+              return positions2.map((p2, nnidx) => {
+                if (p2.type === 'dots') return null;
+                return (
+                  <svg
+                    key={`edge-${idx}-${nidx}-${nnidx}`}
+                    width="100%"
+                    height="100%"
+                    style={{ position: 'absolute', left: 0, top: 0, pointerEvents: 'none' }}
+                  >
+                    <line
+                      x1={x1}
+                      y1={p1.y}
+                      x2={x2}
+                      y2={p2.y}
+                      stroke="#a5b4fc"
+                      strokeWidth={1.2}
+                      opacity={0.5}
+                    />
+                  </svg>
+                );
+              });
+            });
+          })}
+      </div>
+      {/* Neurons */}
+      <div
+        className="flex h-full items-center justify-center gap-20 px-4 overflow-x-auto relative z-10"
+        style={{ height: visHeight }}
+      >
+        {layers.map((layer: any, idx: number) => {
+          const positions = getNeuronPositions(layer.neurons, neuronGap, visHeight);
+          return (
+            <div
+              key={idx}
+              ref={(el) => {
+                neuronColRefs.current[idx] = el;
+              }}
+              className="flex flex-col items-center gap-2"
+            >
+              <div className="text-xs font-semibold mb-1">{layer.type.toUpperCase()}</div>
+              {positions.map((p, nidx) =>
+                p.type === 'dots' ? (
+                  <div
+                    key={nidx}
+                    className="text-white text-center"
+                    style={{ lineHeight: `${circleSize}px`, height: circleSize }}
+                  >
+                    ...
+                  </div>
+                ) : (
+                  <div
+                    key={nidx}
+                    className="w-7 h-7 rounded-full border-2"
+                    style={{
+                      background:
+                        layer.type === 'input'
+                          ? '#10b981'
+                          : layer.type === 'output'
+                            ? '#ef4444'
+                            : '#6366f1',
+                      borderColor: '#e5e7eb',
+                    }}
+                  />
+                )
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
 const NeuralLayerNode = ({ data, type, selected, isConnectable }: NeuralLayerProps) => {
 
   const [layers, setLayers] = useState<Layer[]>(
@@ -359,137 +509,7 @@ const NeuralLayerNode = ({ data, type, selected, isConnectable }: NeuralLayerPro
               </div>
               <div className="w-full h-[550px] rounded-lg border border-slate-100 relative overflow-hidden">
                 {/* Responsive centering using ref and state */}
-                {(() => {
-                  const containerRef = useRef<HTMLDivElement>(null);
-                  const [canvasWidth, setCanvasWidth] = useState(0);
-                  useEffect(() => {
-                    const handleResize = () => {
-                      if (containerRef.current) {
-                        setCanvasWidth(containerRef.current.offsetWidth);
-                      }
-                    };
-                    handleResize();
-                    window.addEventListener('resize', handleResize);
-                    return () => window.removeEventListener('resize', handleResize);
-                  }, []);
-                  function getNeuronPositions(
-                    count: number,
-                    neuronGap: number,
-                    visHeight: number
-                  ): { y: number; type: 'neuron' | 'dots' }[] {
-                    if (count <= 8) {
-                      const totalHeight = (count - 1) * neuronGap;
-                      return Array.from({ length: count }, (_, i) => ({
-                        y: visHeight / 2 - totalHeight / 2 + i * neuronGap,
-                        type: 'neuron',
-                      }));
-                    }
-                    // >10 neurons → first 5, dots, last 5
-                    const positions = [];
-                    const totalHeight = (10 - 1) * neuronGap;
-                    const startY = visHeight / 2 - totalHeight / 2;
-                    for (let i = 0; i < 4; i++) {
-                      positions.push({ y: startY + i * neuronGap, type: 'neuron' as 'neuron' });
-                    }
-                    positions.push({ y: startY + 5 * neuronGap, type: 'dots' as 'dots' });
-                    for (let i = 0; i < 4; i++) {
-                      positions.push({ y: startY + (6 + i) * neuronGap, type: 'neuron' as 'neuron' });
-                    }
-                    return positions;
-                  }
-                  // Layout constants
-                  const colGap = 80;
-                  const circleSize = 28;
-                  const neuronGap = 36;
-                  const visHeight = 500;
-
-                  // We'll use a flex container to center the neuron columns horizontally
-                  // and measure their positions for edge drawing
-                  const neuronColRefs = useRef<(HTMLDivElement | null)[]>([]);
-                  const [colCenters, setColCenters] = useState<number[]>([]);
-
-                  useEffect(() => {
-                    // After render, measure the center X of each neuron column
-                    if (!containerRef.current) return;
-                    const containerRect = containerRef.current.getBoundingClientRect();
-                    const centers = neuronColRefs.current.map(ref => {
-                      if (!ref) return 0;
-                      const rect = ref.getBoundingClientRect();
-                      return rect.left - containerRect.left + rect.width / 2;
-                    });
-                    setColCenters(centers);
-                  }, [layers, canvasWidth]);
-
-                  return (
-                    <div ref={containerRef} className="relative w-full h-full">
-                      {/* Edges */}
-                      <div className="absolute inset-0 pointer-events-none">
-                        {colCenters.length === layers.length && layers.map((layer: any, idx: number) => {
-                          if (idx === layers.length - 1) return null;
-                          const nextLayer = layers[idx + 1];
-                          const x1 = colCenters[idx];
-                          const x2 = colCenters[idx + 1];
-                          const positions1 = getNeuronPositions(layer.neurons, neuronGap, visHeight);
-                          const positions2 = getNeuronPositions(nextLayer.neurons, neuronGap, visHeight);
-                          return positions1.map((p1, nidx) => {
-                            if (p1.type === 'dots') return null;
-                            return positions2.map((p2, nnidx) => {
-                              if (p2.type === 'dots') return null;
-                              return (
-                                <svg
-                                  key={`edge-${idx}-${nidx}-${nnidx}`}
-                                  width="100%" height="100%"
-                                  style={{ position: 'absolute', left: 0, top: 0, pointerEvents: 'none' }}
-                                >
-                                  <line
-                                    x1={x1}
-                                    y1={p1.y}
-                                    x2={x2}
-                                    y2={p2.y}
-                                    stroke="#a5b4fc"
-                                    strokeWidth={1.2}
-                                    opacity={0.5}
-                                  />
-                                </svg>
-                              );
-                            });
-                          });
-                        })}
-                      </div>
-                      {/* Neurons */}
-                      <div className="flex h-full items-center justify-center gap-20 px-4 overflow-x-auto relative z-10" style={{ height: visHeight }}>
-                        {layers.map((layer: any, idx: number) => {
-                          const positions = getNeuronPositions(layer.neurons, neuronGap, visHeight);
-                          return (
-                            <div
-                              key={idx}
-                              ref={el => { neuronColRefs.current[idx] = el; }}
-                              className="flex flex-col items-center gap-2"
-                            >
-                              <div className="text-xs font-semibold mb-1">{layer.type.toUpperCase()}</div>
-                              {positions.map((p, nidx) =>
-                                p.type === 'dots' ? (
-                                  <div key={nidx} className="text-white text-center" style={{ lineHeight: `${circleSize}px`, height: circleSize }}>
-                                    ...
-                                  </div>
-                                ) : (
-                                  <div
-                                    key={nidx}
-                                    className="w-7 h-7 rounded-full border-2"
-                                    style={{
-                                      background: layer.type === 'input' ? '#10b981' : layer.type === 'output' ? '#ef4444' : '#6366f1',
-                                      borderColor: '#e5e7eb',
-                                    }}
-                                  />
-                                )
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })()}
+                <NetworkVisualization layers={layers} />
                 <div className="absolute bottom-4 right-4 bg-white/20 backdrop-blur-md p-2 rounded-md border">
                   <div className="text-xs">Layers: {layers.length}</div>
                   <div className="text-xs">Neurons: {layers.reduce((s: number, l: any) => s + l.neurons, 0)}</div>
